@@ -1,0 +1,37 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environment
+venv/
+env/
+ENV/
+*.egg-info/
+
+# Flask & Render related
+instance/
+.webassets-cache
+
+# Credentials & secrets (handled via environment variables)
+credentials.json
+*.pem
+*.key
+*.crt
+
+# Logs and local settings
+*.log
+*.env
+.env.*
+
+# VS Code and IDE settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+
+# Jupyter / IPython
+.ipynb_checkpoints/

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EMPWR Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+ 
+
+  <div class="container">
+    <div class="login-card">
+      <!-- Logo and Title -->
+      <div class="logo">
+        <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Logo" />
+      </div>
+      <h1 class="title">Exam Portal</h1>
+
+      <!-- Form -->
+      <form method="POST" action="/" class="login-form">
+        <div class="input-field">
+          <i class="fa-solid fa-envelope icon"></i>
+          <input type="email" name="email" placeholder="Email" required />
+        </div>
+
+        <div class="input-field">
+          <i class="fa-solid fa-lock icon"></i>
+          <input type="password" name="password" placeholder="Password" required />
+        </div>
+
+        <button type="submit" class="submit-btn">Sign In</button>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="inline-flash">
+            {% for category, msg in messages %}
+            <div class="inline-flash-message {{ category }}">
+                <i class="fa-solid fa-triangle-exclamation icon"></i>
+                <span>{{ msg }}</span>
+                <button class="close-inline" onclick="this.parentElement.style.display='none';">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+      </form>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='script/script.js') }}"></script>
+</body>
+</html>
+
+  
+

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Online Exam - Epical Layouts</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='exam.css') }}">
+  <script defer src="{{ url_for('static', filename='script/exam.js') }}"></script>
+</head>
+<body oncontextmenu="return false">
+  <div id="exam-container">
+    <header>
+      <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Logo" class="logo" />
+      <h1>Epical Layouts Exam Portal</h1>
+      <div id="timer">Time Left: <span id="time">--:--</span></div>
+    </header>
+
+    <main>
+      <div id="question-box">
+        <h3 id="question-text">Loading question...</h3>
+        <div id="options-container"></div>
+      </div>
+
+      <div id="controls">
+        <button id="prev-btn">Previous</button>
+        <button id="mark-btn">Mark for Review</button>
+        <button id="erase-btn">Erase</button>
+        <button id="next-btn">Save & Next</button>
+      </div>
+    </main>
+
+    <footer>
+      <button id="submit-btn">Submit Exam</button>
+    </footer>
+  </div>
+
+  <!-- Unauthorized Behavior Termination Overlay -->
+  <div id="termination-overlay" class="hidden">
+    <div class="overlay-message">
+      <h2>❌ Exam Terminated</h2>
+      <p>You've exceeded the allowed tab switches or performed unauthorized actions.</p>
+    </div>
+  </div>
+</body>
+</html>
