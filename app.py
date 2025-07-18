@@ -5,6 +5,7 @@ from functools import wraps
 from datetime import datetime
 import os
 import json
+import base64
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default-secret-key')  # Use env var for security
@@ -13,12 +14,13 @@ app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default-secret-key')  # Use
 GOOGLE_SHEET_ID = "1hyoQZpD17tsTjSh1XqgAUvfZ4Nt3kwV7zxphosruXeE"
 GOOGLE_SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-# 🟩 Load service account credentials from env var
-google_service_account = json.loads(os.environ.get("GOOGLE_CREDENTIALS_JSON", "{}"))
-google_creds = ServiceAccountCredentials.from_json_keyfile_dict(google_service_account, GOOGLE_SCOPE)
+# 🟩 Load and decode Base64 service account credentials from env
+base64_creds = os.environ.get("GOOGLE_CREDENTIALS_JSON_BASE64", "")
+decoded_creds = json.loads(base64.b64decode(base64_creds))
+google_creds = ServiceAccountCredentials.from_json_keyfile_dict(decoded_creds, GOOGLE_SCOPE)
 gspread_client = gspread.authorize(google_creds)
 
-# Google Sheets setup
+# 🟦 Google Sheets setup
 user_sheet = gspread_client.open_by_key(GOOGLE_SHEET_ID).worksheet("USER")
 
 # 🔒 Decorator for login required
