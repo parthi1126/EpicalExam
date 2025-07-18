@@ -8,22 +8,26 @@ import json
 import base64
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default-secret-key')  # Use env var for security
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default-secret-key')
 
-# 🟨 Constants
+# Constants
 GOOGLE_SHEET_ID = "1hyoQZpD17tsTjSh1XqgAUvfZ4Nt3kwV7zxphosruXeE"
 GOOGLE_SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-# 🟩 Load and decode Base64 service account credentials from env
-base64_creds = os.environ.get("GOOGLE_CREDENTIALS_JSON_BASE64", "")
-decoded_creds = json.loads(base64.b64decode(base64_creds))
-google_creds = ServiceAccountCredentials.from_json_keyfile_dict(decoded_creds, GOOGLE_SCOPE)
+# Load and decode base64-encoded service account JSON from env
+encoded = os.getenv("GOOGLE_CREDENTIALS_JSON")
+if not encoded:
+    raise ValueError("Missing GOOGLE_CREDENTIALS_JSON environment variable")
+
+decoded = base64.b64decode(encoded).decode("utf-8")
+creds_dict = json.loads(decoded)
+google_creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, GOOGLE_SCOPE)
 gspread_client = gspread.authorize(google_creds)
 
-# 🟦 Google Sheets setup
+# Access the USER worksheet
 user_sheet = gspread_client.open_by_key(GOOGLE_SHEET_ID).worksheet("USER")
 
-# 🔒 Decorator for login required
+# Decorator for login required
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -33,13 +37,12 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# 🧾 Login Route
+# Login Route
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-
         users = user_sheet.get_all_records(head=1)
 
         for user in users:
@@ -63,25 +66,25 @@ def login():
 
     return render_template('login.html')
 
-# 👨‍💼 Admin Dashboard
+# Admin Dashboard
 @app.route('/admin_dashboard')
 @login_required
 def admin_dashboard():
     return "<h2>📊 Admin Dashboard</h2>"
 
-# 📘 Instructions Page
+# Instructions Page
 @app.route('/instructions')
 @login_required
 def instructions():
     return render_template('instructions.html', fullname=session.get('fullname'))
 
-# 📝 Exam Page
+# Exam Page
 @app.route('/exam')
 @login_required
 def exam():
     return render_template('exam.html', fullname=session.get('fullname'))
 
-# 📨 Submit Answer
+# Submit Answer
 @app.route('/submit_answer', methods=['POST'])
 @login_required
 def submit_answer():
@@ -94,8 +97,8 @@ def submit_answer():
 
     answer_sheet = gspread_client.open_by_key(GOOGLE_SHEET_ID).worksheet(f"Answers_{test_id}")
     timestamp = datetime.now().isoformat()
-
     records = answer_sheet.get_all_records(head=1)
+
     found = False
     for i, row in enumerate(records, start=2):
         if row['Email'] == email and str(row['QID']) == str(qid):
@@ -108,7 +111,7 @@ def submit_answer():
 
     return jsonify({'success': True})
 
-# 📤 Get Questions
+# Get Questions
 @app.route('/get_questions/<test_id>')
 @login_required
 def get_questions(test_id):
@@ -119,7 +122,7 @@ def get_questions(test_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# 🚪 Logout
+# Logout
 @app.route('/logout')
 def logout():
     session.clear()
