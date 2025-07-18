@@ -13,7 +13,7 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default-secret-key')
 
 # Constants
-GOOGLE_SHEET_ID = "1hyoQZpD17tsTjSh1XqgAUvfZ4Nt3kwV7zxphosruXeE"
+SPREADSHEET_ID = "1hyoQZpD17tsTjSh1XqgAUvfZ4Nt3kwV7zxphosruXeE"
 GOOGLE_SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
 # Load and decode base64-encoded service account JSON from env
@@ -27,10 +27,10 @@ google_creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, GOOG
 gspread_client = gspread.authorize(google_creds)
 
 # Access the USER worksheet
-login_sheet = gspread_client.open_by_key(GOOGLE_SHEET_ID).worksheet("USER")
+login_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet("USER")
 
 # Decorator for login required
-ef login_required(f):
+def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('logged_in'):
@@ -98,7 +98,7 @@ def get_questions(test_id):
         # For TEST01 use Questions_TEST01
         worksheet_name = f"Questions_TEST{test_id}"
         
-        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
         q_sheet = spreadsheet.worksheet(worksheet_name)
         questions = q_sheet.get_all_records(head=1)
         
@@ -121,7 +121,7 @@ def submit_exam():
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
         # Get the test results sheet
-        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
         
         # Try to find existing results sheet or create new
         try:
