@@ -14,7 +14,7 @@ instance/
 .webassets-cache
 
 # Credentials & secrets (handled via environment variables)
-credentials.json
+
 *.pem
 *.key
 *.crt
