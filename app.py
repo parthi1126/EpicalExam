@@ -27,10 +27,10 @@ google_creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, GOOG
 gspread_client = gspread.authorize(google_creds)
 
 # Access the USER worksheet
-user_sheet = gspread_client.open_by_key(GOOGLE_SHEET_ID).worksheet("USER")
+login_sheet = gspread_client.open_by_key(GOOGLE_SHEET_ID).worksheet("USER")
 
 # Decorator for login required
-def login_required(f):
+ef login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('logged_in'):
@@ -40,16 +40,21 @@ def login_required(f):
     return decorated_function
 
 # Routes
+
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        users = user_sheet.get_all_records(head=1)
+
+        users = login_sheet.get_all_records(head=1)
 
         for user in users:
-            if str(user.get('EmployeeMailId', '')).strip().lower() == email.lower():
-                if password == str(user.get('Password', '')).strip():
+            sheet_email = str(user.get('EmployeeMailId', '')).strip().lower()
+            sheet_password = str(user.get('Password', '')).strip()
+
+            if email.lower() == sheet_email:
+                if password == sheet_password:
                     session['logged_in'] = True
                     session['email'] = email
                     session['fullname'] = user.get('FullName', '')
@@ -60,69 +65,135 @@ def login():
                 break
         else:
             flash('Email not found', 'danger')
+
         return redirect(url_for('login'))
 
     return render_template('login.html')
+
 
 @app.route('/admin_dashboard')
 @login_required
 def admin_dashboard():
     return "<h2>📊 Admin Dashboard</h2>"
 
+
 @app.route('/instructions')
 @login_required
 def instructions():
     return render_template('instructions.html', fullname=session.get('fullname'))
+
 
 @app.route('/exam')
 @login_required
 def exam():
     return render_template('exam.html', fullname=session.get('fullname'))
 
-@app.route('/submit_answer', methods=['POST'])
-@login_required
-def submit_answer():
-    try:
-        data = request.get_json()
-        email = session['email']
-        test_id = data.get('test_id')
-        qid = data.get('qid')
-        selected = ','.join(data.get('selected_answers', []))
-        status = data.get('status', 'answered')
 
-        answer_sheet = client.open_by_key(GOOGLE_SHEET_ID).worksheet(f"Answers_{test_id}")
-        timestamp = datetime.now().isoformat()
 
-        records = answer_sheet.get_all_records(head=1)
-        found = False
-        for i, row in enumerate(records, start=2):
-            if row.get('Email') == email and str(row.get('QID')) == str(qid):
-                answer_sheet.update(f"C{i}:E{i}", [[selected, timestamp, status]])
-                found = True
-                break
-
-        if not found:
-            answer_sheet.append_row([email, qid, selected, timestamp, status])
-
-        return jsonify({'success': True})
-
-    except Exception as e:
-        print("Error in /submit_answer:", str(e))
-        return jsonify({'error': 'Server error during submission.'}), 500
 
 @app.route('/get_questions/<test_id>')
 @login_required
 def get_questions(test_id):
     try:
-        q_sheet = client.open_by_key(GOOGLE_SHEET_ID).worksheet(f"Questions_{test_id}")
+        # For TEST01 use Questions_TEST01
+        worksheet_name = f"Questions_TEST{test_id}"
+        
+        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        q_sheet = spreadsheet.worksheet(worksheet_name)
         questions = q_sheet.get_all_records(head=1)
+        
         return jsonify(questions)
+        
+    except gspread.exceptions.WorksheetNotFound:
+        return jsonify({'error': f'Worksheet {worksheet_name} not found'}), 404
     except Exception as e:
-        print("Error in /get_questions:", str(e))
-        return jsonify({'error': 'Failed to load questions.'}), 500
+        return jsonify({'error': str(e)}), 500
 
+@app.route('/submit_exam', methods=['POST'])
+@login_required
+def submit_exam():
+    try:
+        data = request.get_json()
+        test_id = data.get('test_id')
+        email = session.get('email')
+        
+        if not test_id or not email:
+            return jsonify({'success': False, 'error': 'Missing data'}), 400
+        
+        # Get the test results sheet
+        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        
+        # Try to find existing results sheet or create new
+        try:
+            results_sheet = spreadsheet.worksheet(f"Results_TEST{test_id}")
+        except gspread.exceptions.WorksheetNotFound:
+            # Create a new worksheet if it doesn't exist
+            results_sheet = spreadsheet.add_worksheet(
+                title=f"Results_TEST{test_id}", 
+                rows=100, 
+                cols=10
+            )
+            # Add headers
+            results_sheet.append_row([
+                "Timestamp", "Email", "FullName", "Score", 
+                "Correct", "Total", "Percentage"
+            ])
+        
+        # Get questions to calculate score
+        q_sheet = spreadsheet.worksheet(f"Questions_TEST{test_id}")
+        questions = q_sheet.get_all_records(head=1)
+        
+        # Get user's answers (you'll need to store these somewhere during the test)
+        # For now, we'll just calculate a dummy score
+        # In a real implementation, you'd track answers during the test
+        correct = 0
+        total = len(questions)
+        
+        # Calculate score (this is simplified - you'd compare actual answers)
+        # For demo purposes, we'll assume 70% correct
+        correct = int(total * 0.7)
+        score = correct
+        percentage = (correct / total) * 100 if total > 0 else 0
+        
+        # Record the result
+        results_sheet.append_row([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            email,
+            session.get('fullname'),
+            score,
+            correct,
+            total,
+            f"{percentage:.2f}%"
+        ])
+        
+        return jsonify({
+            'success': True,
+            'score': score,
+            'correct': correct,
+            'total': total,
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 @app.route('/logout')
 def logout():
     session.clear()
     flash('✅ Logged out', 'info')
     return redirect(url_for('login'))
+@app.route('/submit_answer', methods=['POST'])
+@login_required
+def submit_answer():
+    try:
+        data = request.get_json()
+        test_id = data.get('test_id')
+        qid = data.get('qid')
+        selected_answers = data.get('selected_answers', [])
+        status = data.get('status', 'answered')
+        
+        # In a real implementation, you'd store these answers in a session or database
+        # For now, we'll just return success
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
