@@ -39,13 +39,15 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Login Route
+# Routes
+
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        users = user_sheet.get_all_records(head=1)
+
+        users = login_sheet.get_all_records(head=1)
 
         for user in users:
             sheet_email = str(user.get('EmployeeMailId', '')).strip().lower()
@@ -68,25 +70,25 @@ def login():
 
     return render_template('login.html')
 
-# Admin Dashboard
+
 @app.route('/admin_dashboard')
 @login_required
 def admin_dashboard():
     return "<h2>📊 Admin Dashboard</h2>"
 
-# Instructions Page
+
 @app.route('/instructions')
 @login_required
 def instructions():
     return render_template('instructions.html', fullname=session.get('fullname'))
 
-# Exam Page
+
 @app.route('/exam')
 @login_required
 def exam():
     return render_template('exam.html', fullname=session.get('fullname'))
 
-# Submit Answer
+
 @app.route('/submit_answer', methods=['POST'])
 @login_required
 def submit_answer():
@@ -97,10 +99,10 @@ def submit_answer():
     selected = ','.join(data.get('selected_answers', []))
     status = data.get('status', 'answered')
 
-    answer_sheet = gspread_client.open_by_key(GOOGLE_SHEET_ID).worksheet(f"Answers_{test_id}")
+    answer_sheet = client.open_by_key(SPREADSHEET_ID).worksheet(f"Answers_{test_id}")
     timestamp = datetime.now().isoformat()
-    records = answer_sheet.get_all_records(head=1)
 
+    records = answer_sheet.get_all_records(head=1)
     found = False
     for i, row in enumerate(records, start=2):
         if row['Email'] == email and str(row['QID']) == str(qid):
@@ -113,18 +115,18 @@ def submit_answer():
 
     return jsonify({'success': True})
 
-# Get Questions
+
 @app.route('/get_questions/<test_id>')
 @login_required
 def get_questions(test_id):
     try:
-        q_sheet = gspread_client.open_by_key(GOOGLE_SHEET_ID).worksheet(f"Questions_{test_id}")
+        q_sheet = client.open_by_key(SPREADSHEET_ID).worksheet(f"Questions_{test_id}")
         questions = q_sheet.get_all_records(head=1)
         return jsonify(questions)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Logout
+
 @app.route('/logout')
 def logout():
     session.clear()
