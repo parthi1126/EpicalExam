@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Quiz System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .timer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .timer-icon {
+            color: #e74c3c;
+        }
+
+        .timer-text {
+            color: #e74c3c;
+        }
+
+        .test-info {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        .question-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 25px;
+        }
+
+        .question-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .question-text {
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 25px;
+            color: #333;
+        }
+
+        .options {
+            margin-bottom: 30px;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option:hover {
+            background-color: #f8f9fa;
+            border-color: #007bff;
+        }
+
+        .option.selected {
+            background-color: #e3f2fd;
+            border-color: #007bff;
+        }
+
+        .option input[type="radio"] {
+            margin-right: 12px;
+            transform: scale(1.2);
+        }
+
+        .option-label {
+            font-weight: bold;
+            margin-right: 10px;
+            color: #555;
+        }
+
+        .option-text {
+            color: #333;
+        }
+
+        .action-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-top: 20px;
+            width:790px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: 2px solid;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-previous {
+            background: white;
+            border-color: #6c757d;
+            color: #6c757d;
+        }
+
+        .btn-previous:hover {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-review {
+            background: white;
+            border-color: #FFA500;
+            color: #FFA500;
+        }
+
+        .btn-review:hover {
+            background: #FFA500;
+            color: white;
+        }
+
+        .btn-review.marked {
+            background: #e9ecef;
+        }
+        .btn-save {
+            background: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background: #218838;
+        }
+
+        .btn-submit {
+            background: #dc3545;
+            border-color: #dc3545;
+            color: white;
+            padding: 15px;
+            padding-left: 100px;
+            padding-right: 100px;
+            
+        }
+
+        .btn-submit:hover {
+            background: #c82333;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .navigation-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            height: 500px;
+            overflow-y: scroll;
+        }
+
+        .nav-header {
+            background: #e3f2fd;
+            color: #1976d2;
+            text-align: center;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .question-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .question-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .question-btn.current {
+            background: 	#00BFFF;
+            color: white;
+        }
+
+        .question-btn.answered {
+            background: #4caf50;
+            color: white;
+        }
+
+        .question-btn.review {
+            background: #FFA500;
+            color: white;
+        }
+
+        .question-btn.attempted {
+            background: #ffeb3b;
+            color: #333;
+        }
+
+        .question-btn.unattempted {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .question-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .summary {
+            margin-bottom: 20px;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .badge {
+            background: #6c757d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .legend {
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+            gap: 15px;
+            width: 100%;
+            margin-bottom: 20px;
+            margin-top: 0px;
+        }
+
+        header img {
+            margin-top: 0;
+            height: 50px;
+            width: auto;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            color: var(--primary-dark);
+            font-weight: 600;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                justify-content: center;
+            }
+            
+            .question-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        .buttonss{
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="logo.png" width="50px" height="50px" alt="Epical Layouts Logo" />
+        <h1>Epical Layouts</h1>
+    </header>
+    <div class="container">
+        <div class="header">
+            <div class="timer">
+                <span class="timer-icon">⏰</span>
+                <span>Time: <span class="timer-text" id="timer">25:00</span></span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Question Panel -->
+            <div class="question-panel">
+                <div class="question-header" id="questionHeader">Q1</div>
+                <div class="question-text" id="questionText">
+                    Distance between two shafts shall not be less than ___________?
+                </div>
+                
+                <div class="options" id="optionsContainer">
+                    <!-- Options will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Navigation Panel -->
+            <div class="navigation-panel">
+                <div class="nav-header">QUESTIONS</div>
+                
+                <div class="question-grid" id="questionGrid">
+                    <!-- Question buttons will be populated by JavaScript -->
+                </div>
+
+                <div class="summary">
+                    <div class="summary-item">
+                        <span>Un-Attempted Question</span>
+                        <span class="badge" id="unattemptedCount">5</span>
+                    </div>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #e0e0e0;"></div>
+                        <span>Not Answered</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4caf50;"></div>
+                        <span>Answered</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #9c27b0;"></div>
+                        <span>Answered but Marked for Review</span>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Panel -->
+         <div class="buttonss">
+            <div class="action-panel">
+                <div class="action-buttons">
+                    <button class="btn btn-previous" id="prevBtn" disabled>
+                        ← Previous
+                    </button>
+                    <button class="btn btn-review" id="reviewBtn">
+                        Mark for Review 
+                    </button>
+                    <button class="btn btn-save" id="saveBtn">
+                        Save & Next →
+                    </button>
+                </div>
+            </div>
+            <div class="action-panel" style="width:400px; margin-left: 20px;">
+                <div class="action-buttons">
+                    <button class="btn btn-submit" id="submitBtn">
+                        Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Quiz data
+        const questions = [
+            {
+                id: 1,
+                question: "Distance between two shafts shall not be less than ___________?",
+                options: ["7 M", "105 M", "135 M", "155 M", "185 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 2,
+                question: "What is the minimum safety clearance required in underground mining?",
+                options: ["2 M", "3 M", "4 M", "5 M", "6 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 3,
+                question: "Maximum permissible concentration of methane in mine atmosphere is:",
+                options: ["0.5%", "1.0%", "1.25%", "2.0%", "2.5%"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 4,
+                question: "Ventilation survey should be conducted at least:",
+                options: ["Weekly", "Monthly", "Quarterly", "Half-yearly", "Annually"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 5,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 6,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 7,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 8,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 9,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 10,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 11,
+                question: "Distance between two shafts shall not be less than ___________?",
+                options: ["7 M", "105 M", "135 M", "155 M", "185 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 12,
+                question: "What is the minimum safety clearance required in underground mining?",
+                options: ["2 M", "3 M", "4 M", "5 M", "6 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 13,
+                question: "Maximum permissible concentration of methane in mine atmosphere is:",
+                options: ["0.5%", "1.0%", "1.25%", "2.0%", "2.5%"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 14,
+                question: "Ventilation survey should be conducted at least:",
+                options: ["Weekly", "Monthly", "Quarterly", "Half-yearly", "Annually"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 15,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 16,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 17,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 18,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 19,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 20,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 21,
+                question: "Distance between two shafts shall not be less than ___________?",
+                options: ["7 M", "105 M", "135 M", "155 M", "185 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 22,
+                question: "What is the minimum safety clearance required in underground mining?",
+                options: ["2 M", "3 M", "4 M", "5 M", "6 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 23,
+                question: "Maximum permissible concentration of methane in mine atmosphere is:",
+                options: ["0.5%", "1.0%", "1.25%", "2.0%", "2.5%"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 24,
+                question: "Ventilation survey should be conducted at least:",
+                options: ["Weekly", "Monthly", "Quarterly", "Half-yearly", "Annually"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 25,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 26,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 27,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 28,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 29,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 30,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 1,
+                question: "Distance between two shafts shall not be less than ___________?",
+                options: ["7 M", "105 M", "135 M", "155 M", "185 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 2,
+                question: "What is the minimum safety clearance required in underground mining?",
+                options: ["2 M", "3 M", "4 M", "5 M", "6 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 3,
+                question: "Maximum permissible concentration of methane in mine atmosphere is:",
+                options: ["0.5%", "1.0%", "1.25%", "2.0%", "2.5%"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 4,
+                question: "Ventilation survey should be conducted at least:",
+                options: ["Weekly", "Monthly", "Quarterly", "Half-yearly", "Annually"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 5,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 6,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 7,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            },
+            {
+                id: 8,
+                question: "Minimum width of main haulage road should be:",
+                options: ["3.5 M", "4.0 M", "4.5 M", "5.0 M", "5.5 M"],
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            }
+
+        ];
+
+        let currentQuestion = 0;
+        let timeLeft = 30 * 60; // 25 minutes in seconds
+
+        // Initialize quiz
+        function initQuiz() {
+            renderQuestion();
+            renderQuestionGrid();
+            updateSummary();
+            startTimer();
+            updateActionButtons();
+            
+            // Add event listener for submit button
+            document.getElementById('submitBtn').addEventListener('click', submitQuiz);
+        }
+
+        // Timer function
+        function startTimer() {
+            const timer = setInterval(() => {
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    alert('Time is up! Quiz will be submitted automatically.');
+                    submitQuiz();
+                    return;
+                }
+                
+                timeLeft--;
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                document.getElementById('timer').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // Render current question
+        function renderQuestion() {
+            const question = questions[currentQuestion];
+            document.getElementById('questionHeader').textContent = `Q${question.id}`;
+            document.getElementById('questionText').textContent = question.question;
+            
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, index) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = `option ${question.selectedAnswer === index ? 'selected' : ''}`;
+                optionDiv.onclick = () => selectAnswer(index);
+                
+                optionDiv.innerHTML = `
+                    <input type="radio" name="answer" ${question.selectedAnswer === index ? 'checked' : ''}>
+                    <span class="option-label">${String.fromCharCode(65 + index)}</span>
+                    <span class="option-text">${option}</span>
+                `;
+                
+                optionsContainer.appendChild(optionDiv);
+            });
+
+            // Update button states
+            document.getElementById('prevBtn').disabled = currentQuestion === 0;
+            document.getElementById('reviewBtn').textContent = 
+                question.isMarkedForReview ? 'Unmark for Review' : 'Mark for Review';
+            document.getElementById('reviewBtn').classList.toggle('marked', question.isMarkedForReview);
+            
+            updateActionButtons();
+        }
+
+        // Update action buttons based on current question
+        function updateActionButtons() {
+            const saveBtn = document.getElementById('saveBtn');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            if (currentQuestion === questions.length - 1) {
+                // Last question - disable Next, enable Submit
+                saveBtn.disabled = true;
+                submitBtn.disabled = false;
+                saveBtn.textContent = 'Next →';
+            } else {
+                // Not last question - enable Next, disable Submit
+                saveBtn.disabled = false;
+                submitBtn.disabled = true;
+                saveBtn.textContent = 'Next →';
+            }
+            
+            saveBtn.className = 'btn btn-save';
+            saveBtn.onclick = saveAndNext;
+        }
+
+        // Select answer
+        function selectAnswer(optionIndex) {
+            questions[currentQuestion].selectedAnswer = optionIndex;
+            questions[currentQuestion].isAttempted = true;
+            renderQuestion();
+            renderQuestionGrid();
+            updateSummary();
+        }
+
+        // Clear answer
+        function clearAnswer() {
+            questions[currentQuestion].selectedAnswer = null;
+            renderQuestion();
+            renderQuestionGrid();
+            updateSummary();
+        }
+
+        // Mark for review
+        function toggleReview() {
+            questions[currentQuestion].isMarkedForReview = !questions[currentQuestion].isMarkedForReview;
+            renderQuestion();
+            renderQuestionGrid();
+            updateSummary();
+        }
+
+        // Save and next
+        function saveAndNext() {
+            if (currentQuestion < questions.length - 1) {
+                currentQuestion++;
+                renderQuestion();
+                renderQuestionGrid();
+            }
+        }
+
+        // Previous question
+        function previousQuestion() {
+            if (currentQuestion > 0) {
+                currentQuestion--;
+                renderQuestion();
+                renderQuestionGrid();
+            }
+        }
+
+        // Navigate to specific question
+        function navigateToQuestion(questionIndex) {
+            currentQuestion = questionIndex;
+            renderQuestion();
+            renderQuestionGrid();
+        }
+
+        // Render question grid
+        function renderQuestionGrid() {
+            const grid = document.getElementById('questionGrid');
+            grid.innerHTML = '';
+            
+            questions.forEach((question, index) => {
+                const button = document.createElement('button');
+                button.className = `question-btn ${getQuestionStatus(question, index)}`;
+                button.textContent = `Q${question.id}`;
+                button.onclick = () => navigateToQuestion(index);
+                grid.appendChild(button);
+            });
+        }
+
+        // Get question status
+        function getQuestionStatus(question, index) {
+            if (index === currentQuestion) return 'current';
+            if (question.isMarkedForReview) return 'review';
+            if (question.selectedAnswer !== null) return 'answered';
+            if (question.isAttempted) return 'attempted';
+            return 'unattempted';
+        }
+
+        // Update summary
+        function updateSummary() {
+            const unattempted = questions.filter(q => !q.isAttempted && q.selectedAnswer === null).length;
+            document.getElementById('unattemptedCount').textContent = unattempted;
+        }
+
+        // Submit quiz
+        function submitQuiz() {
+            const answered = questions.filter(q => q.selectedAnswer !== null).length;
+            const unanswered = questions.length - answered;
+            
+            if (confirm(`You have answered ${answered} questions and ${unanswered} questions are unanswered. Do you want to submit?`)) {
+                alert('Quiz submitted successfully!');
+                // Here you would typically send the data to a server
+                console.log('Quiz results:', questions);
+                
+                // Disable all buttons after submission
+                document.querySelectorAll('.btn').forEach(btn => {
+                    btn.disabled = true;
+                });
+                
+                // Stop the timer
+                clearInterval(timerInterval);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('prevBtn').onclick = previousQuestion;
+        document.getElementById('reviewBtn').onclick = toggleReview;
+        document.getElementById('saveBtn').onclick = saveAndNext;
+
+        // Initialize quiz when page loads
+        let timerInterval;
+        window.onload = initQuiz;
+    </script>
+</body>
+</html>

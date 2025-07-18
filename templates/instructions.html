@@ -4,214 +4,298 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>General Instructions</title>
+  <link rel="icon" href="logo.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <style>
+    :root {
+      --primary-color: #2c6e49;
+      --primary-dark: #1e4d36;
+      --secondary-color: #4c956c;
+      --light-bg: #f6fef7;
+      --accent-color: #ff9b54;
+      --text-color: #333;
+      --light-text: #666;
+      --border-radius: 8px;
+      --box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    * {
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+    }
+
     body {
-      background: linear-gradient(to bottom right, #e8f5e9, #c8e6c9);
-      font-family: "Segoe UI", sans-serif;
-      min-height: 100vh;
+      height: 100vh;
+      background: linear-gradient(135deg, #f6fef7 0%, #d5f6e1 50%, #c4f0d9 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1.4;
+      overflow: hidden;
+      padding: 10px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 5px;
+    }
+
+    header img {
+      height: 40px;
+      width: auto;
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      color: var(--primary-dark);
+      font-weight: 600;
+    }
+
+    .main-container {
+      width: 100%;
+      max-width: 800px;
+      height: calc(100vh - 80px);
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 30px 20px;
     }
 
-    .instruction-box {
-      background: #fff;
-      padding: 40px;
-      border-radius: 16px;
-      box-shadow: 0 10px 25px rgba(0, 128, 0, 0.15);
-      max-width: 900px;
+    .exam-card {
       width: 100%;
+      height: 100%;
+      max-height: 90vh;
+      margin: 0;
+      padding: 20px;
+      box-shadow: var(--box-shadow);
+      background-color: white;
+      border-radius: var(--border-radius);
+      border-top: 4px solid var(--primary-color);
+      display: flex;
+      flex-direction: column;
     }
 
-    .header {
+    .exam-header {
+      text-align: center;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .exam-header h2 {
+      font-size: 1.4rem;
+      color: var(--primary-dark);
+      margin-bottom: 5px;
+    }
+
+    .exam-meta {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      font-size: 0.85rem;
+      color: var(--light-text);
+    }
+
+    .instructions-container {
+      flex: 1;
+      overflow-y: auto;
+      margin: 10px 0;
+      padding: 5px;
+    }
+
+    .instruction-list {
+      background-color: rgba(10, 173, 10, 0.1);
+      padding: 15px;
+      padding-left: 25px;
+      font-size: 0.9rem;
+      margin-bottom: 15px;
+      border-radius: 15px;
+    }
+
+    .instruction-list li {
+      margin-bottom: 10px;
+      padding-left: 5px;
+    }
+
+    .instruction-list strong {
+      color: var(--primary-dark);
+    }
+
+    .important-note {
+      background-color: #fff8e6;
+      padding: 10px 15px;
+      border-left: 3px solid var(--accent-color);
+      border-radius: 0 var(--border-radius) var(--border-radius) 0;
+      margin: 15px 0;
+      font-size: 0.85rem;
+    }
+
+    .important-note h3 {
+      color: var(--accent-color);
+      margin-bottom: 5px;
+      font-size: 1rem;
+    }
+
+    .acknowledgement {
+      margin: 15px 0;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+
+    .checkbox-container input[type="checkbox"] {
+      margin-top: 2px;
+      accent-color: var(--primary-color);
+    }
+
+    .exam-footer {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-
-    .company {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .company img {
-      height: 50px;
-    }
-
-    .company-name {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: #065f46;
-    }
-
-    .candidate-name {
-      font-size: 1rem;
-      font-weight: 500;
-      color: #1b5e20;
-    }
-
-    .title {
-    text-align: center;
-    font-weight: 700;
-    font-size: 1.4rem;
-    color: #2e7d32;
-    text-decoration: underline;
-    margin-bottom: 25px;
-    }
-
-
-    .instructions ol {
-      padding-left: 20px;
-      margin-bottom: 25px;
-    }
-
-    .instructions li {
-      margin-bottom: 10px;
-      line-height: 1.6;
-    }
-
-    .legend-box {
-      border: 1px solid #ccc;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 25px;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .legend-color {
-      width: 20px;
-      height: 20px;
-      border-radius: 3px;
-      margin-right: 10px;
-      border: 1px solid #888;
-    }
-
-    .red { background-color: #ef4444; }
-    .green { background-color: #4ade80; }
-    .yellow { background-color: #facc15; }
-    .violet { background-color: #a78bfa; }
-    .gray { background-color: #9ca3af; }
-    .white { background-color: #ffffff; }
-
-    .form-check {
-      margin-bottom: 20px;
-    }
-
-    .start-btn {
-      width: 100%;
-      font-weight: bold;
-      padding: 12px;
-      font-size: 1rem;
-    }
-
-    .start-btn:disabled {
-      background-color: #a5d6a7 !important;
-      border-color: transparent;
-      cursor: not-allowed;
-    }
-
-    .countdown {
-      text-align: center;
-      margin-top: 15px;
-      font-weight: bold;
-      color: #065f46;
-      font-size: 1rem;
-    }
-
-    .good-luck {
-      text-align: center;
       margin-top: 10px;
-      color: #15803d;
-      font-weight: 600;
-      font-size: 1.1rem;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
     }
 
-    @media (max-width: 576px) {
-      .company-name {
+    .wish-message {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+
+    .primary-button {
+      padding: 8px 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-width: 120px;
+    }
+
+    .primary-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .primary-button:hover:enabled {
+      background-color: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 5px;
+      }
+      
+      .exam-card {
+        padding: 15px;
+      }
+      
+      header h1 {
         font-size: 1.2rem;
       }
-
-      .title {
-        font-size: 1.1rem;
+      
+      .exam-header h2 {
+        font-size: 1.2rem;
       }
-
-      .candidate-name {
-        text-align: right;
-        width: 100%;
-        margin-top: 10px;
+      
+      .instruction-list {
+        padding: 10px 15px;
+        font-size: 0.8rem;
+      }
+      
+      .primary-button {
+        padding: 6px 15px;
+        font-size: 0.8rem;
       }
     }
   </style>
 </head>
 <body>
-
-  <div class="instruction-box">
-    <!-- Header with logo, company name, candidate name -->
-    <div class="header">
-      <div class="company">
-        <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Company Logo" />
-        <div class="company-name">EPICAL LAYOUTS</div>
+  <header>
+    <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Company Logo"  width="40" height="40" alt="Epical Layouts Logo" />
+    <h1>Epical Layouts</h1>
+  </header>
+  <main class="main-container">
+    <div class="exam-card">
+      
+      <div class="exam-header">
+        <h2>Exam Instructions</h2>
+        <div class="exam-meta">
+          <span class="meta-item"><strong>Duration:</strong> 3:00 hours</span>
+          <span class="meta-item"><strong>Questions:</strong> 10</span>
+        </div>
       </div>
-      <div class="candidate-name">Candidate: <strong>{{ fullname }}</strong></div>
-    </div>
+      <center><div class="candidate-name">Candidate: <strong>{{ fullname }}</strong></div></center>
+      
+        
 
     <!-- Page Title -->
-    <div class="title"><underline>General Instructions </underline></div>
-
+  
     <!-- Instructions -->
-    <div class="instructions">
-      <ol>
-        <li>Click <strong>Start Test</strong> to begin the exam.</li>
-        <li>The countdown timer will begin immediately.</li>
-        <li>Select the correct option to answer each question.</li>
-        <li>You can change your answer anytime during the exam.</li>
-        <li>Click on <strong>Next</strong> to move to the next question.</li>
-        <li>Use <strong>Mark for Review</strong> to revisit later.</li>
-        <li>Questions can be navigated from the side panel.</li>
-        <li>The color-coded legend below shows question status:</li>
-      </ol>
+    <div class="instructions-container">
+        <ol class="instruction-list">
+          <li>
+            <strong>Read all instructions carefully</strong> before beginning the exam.
+          </li>
+          <li>
+            <strong>Time management:</strong> The exam must be completed within the 3-hour time limit.
+          </li>
+          <li>
+            <strong>No external resources:</strong> The use of dictionaries, calculators, or any online/offline references is strictly prohibited.
+          </li>
+          <li>
+            <strong>Technical requirements:</strong> Ensure you have a stable internet connection before starting.
+          </li>
+          <li>
+            <strong>Navigation warning:</strong> Do not close, refresh, or navigate away from the exam page once started.
+          </li>
+          <li>
+            <strong>Grading policy:</strong> There will be negative marking - 7% of the question's value will be deducted for each incorrect answer.
+          </li>
+        </ol>
 
       <!-- Color Legend -->
-      <div class="legend-box">
-        <div class="legend-item"><div class="legend-color red"></div> Not Answered</div>
-        <div class="legend-item"><div class="legend-color green"></div> Answered</div>
-        <div class="legend-item"><div class="legend-color yellow"></div> Not Answered & Marked for Review</div>
-        <div class="legend-item"><div class="legend-color violet"></div> Answered & Marked for Review</div>
-        <div class="legend-item"><div class="legend-color gray"></div> Dumped</div>
-        <div class="legend-item"><div class="legend-color white" style="border: 1px solid #ccc;"></div> Not Visited</div>
+      <div class="important-note">
+          <h3>Important Note</h3>
+          <p>Any attempt to circumvent these rules may result in disqualification from the exam.</p>
+        </div>
       </div>
 
-      <ol start="9">
-        <li>You may navigate freely between questions.</li>
-        <li>All answered questions will be counted for final score.</li>
-        <li>Don’t click <strong>Final Submit</strong> unless you're done.</li>
-        <li>Your score will be shown immediately after the test.</li>
-      </ol>
-    </div>
+      <div class="acknowledgement">
+        <div class="checkbox-container">
+          <input type="checkbox" id="agreeCheckbox" required />
+          <label for="agreeCheckbox">I have read and understood all the instructions above and agree to comply with them.</label>
+        </div>
+      </div>
 
+      <div class="exam-footer">
+        <p class="wish-message">✨ Best of luck with your exam! ✨</p><div id="countdown" class="countdown"></div>
+        <button id="startExamBtn" class="primary-button btn btn-success start-btn" disabled>Begin Exam</button>
+      </div>
+    </div>
+  </main>
     <!-- Checkbox and Start Button -->
-    <div class="form-check">
-      <input class="form-check-input" type="checkbox" id="agreeCheckbox">
-      <label class="form-check-label" for="agreeCheckbox">
-        I have read and understood the instructions above.
-      </label>
-    </div>
 
-    <button id="startExamBtn" class="btn btn-success start-btn" disabled>Start Test</button>
+
 
     <!-- Countdown and Good Luck Message -->
     <div id="countdown" class="countdown"></div>
-    <div id="goodLuckMsg" class="good-luck" style="display: none;">Good Luck! </div>
+    <div id="goodLuckMsg" class="good-luck" style="display: none;"> </div>
   </div>
 
   <script>

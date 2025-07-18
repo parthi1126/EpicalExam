@@ -1,45 +1,781 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Online Exam - Epical Layouts</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='exam.css') }}">
-  <script defer src="{{ url_for('static', filename='script/exam.js') }}"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Quiz System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .timer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .timer-icon {
+            color: #e74c3c;
+        }
+
+        .timer-text {
+            color: #e74c3c;
+        }
+
+        .test-info {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        .question-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 25px;
+        }
+
+        .question-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .question-text {
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 25px;
+            color: #333;
+        }
+
+        .options {
+            margin-bottom: 30px;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option:hover {
+            background-color: #f8f9fa;
+            border-color: #007bff;
+        }
+
+        .option.selected {
+            background-color: #e3f2fd;
+            border-color: #007bff;
+        }
+
+        .option input[type="radio"] {
+            margin-right: 12px;
+            transform: scale(1.2);
+        }
+
+        .option-label {
+            font-weight: bold;
+            margin-right: 10px;
+            color: #555;
+        }
+
+        .option-text {
+            color: #333;
+        }
+
+        .action-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-top: 20px;
+            width:790px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: 2px solid;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-previous {
+            background: white;
+            border-color: #6c757d;
+            color: #6c757d;
+        }
+
+        .btn-previous:hover {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-review {
+            background: white;
+            border-color: #FFA500;
+            color: #FFA500;
+        }
+
+        .btn-review:hover {
+            background: #FFA500;
+            color: white;
+        }
+
+        .btn-review.marked {
+            background: #e9ecef;
+        }
+        .btn-save {
+            background: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background: #218838;
+        }
+
+        .btn-submit {
+            background: #dc3545;
+            border-color: #dc3545;
+            color: white;
+            padding: 15px;
+            padding-left: 100px;
+            padding-right: 100px;
+            
+        }
+
+        .btn-submit:hover {
+            background: #c82333;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .navigation-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            height: 500px;
+            overflow-y: scroll;
+        }
+
+        .nav-header {
+            background: #e3f2fd;
+            color: #1976d2;
+            text-align: center;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .question-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .question-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .question-btn.current {
+            background:     #00BFFF;
+            color: white;
+        }
+
+        .question-btn.answered {
+            background: #4caf50;
+            color: white;
+        }
+
+        .question-btn.review {
+            background: #FFA500;
+            color: white;
+        }
+
+        .question-btn.attempted {
+            background: #ffeb3b;
+            color: #333;
+        }
+
+        .question-btn.unattempted {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .question-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .summary {
+            margin-bottom: 20px;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .badge {
+            background: #6c757d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .legend {
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+            gap: 15px;
+            width: 100%;
+            margin-bottom: 20px;
+            margin-top: 0px;
+        }
+
+        header img {
+            margin-top: 0;
+            height: 50px;
+            width: auto;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            color: var(--primary-dark);
+            font-weight: 600;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                justify-content: center;
+            }
+            
+            .question-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        .buttonss{
+            display: flex;
+        }
+    </style>
 </head>
-<body oncontextmenu="return false">
-  <div id="exam-container">
+<body>
     <header>
-      <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Logo" class="logo" />
-      <h1>Epical Layouts Exam Portal</h1>
-      <div id="timer">Time Left: <span id="time">--:--</span></div>
+        <img src="{{ url_for('static', filename='image/logo.png') }}" width="50px" height="50px" alt="Epical Layouts Logo" />
+        <h1>Epical Layouts</h1>
     </header>
+    <div class="container">
+        <div class="header">
+            <div class="timer">
+                <span class="timer-icon">⏰</span>
+                <span>Time: <span class="timer-text" id="timer">10:00</span></span>
+            </div>
+        </div>
 
-    <main>
-      <div id="question-box">
-        <h3 id="question-text">Loading question...</h3>
-        <div id="options-container"></div>
-      </div>
+        <div class="main-content">
+            <!-- Question Panel -->
+            <div class="question-panel">
+                <div class="question-header" id="questionHeader">Q1</div>
+                <div class="question-text" id="questionText">
+                    Loading question...
+                </div>
+                
+                <div class="options" id="optionsContainer">
+                    <div class="option">
+                        <input type="radio" name="answer">
+                        <span class="option-label">A</span>
+                        <span class="option-text">Loading options...</span>
+                    </div>
+                </div>
+            </div>
 
-      <div id="controls">
-        <button id="prev-btn">Previous</button>
-        <button id="mark-btn">Mark for Review</button>
-        <button id="erase-btn">Erase</button>
-        <button id="next-btn">Save & Next</button>
-      </div>
-    </main>
+            <!-- Navigation Panel -->
+            <div class="navigation-panel">
+                <div class="nav-header">QUESTIONS</div>
+                
+                <div class="question-grid" id="questionGrid">
+                    <!-- Question buttons will be populated by JavaScript -->
+                </div>
 
-    <footer>
-      <button id="submit-btn">Submit Exam</button>
-    </footer>
-  </div>
+                <div class="summary">
+                    <div class="summary-item">
+                        <span>Un-Attempted Question</span>
+                        <span class="badge" id="unattemptedCount">0</span>
+                    </div>
+                </div>
 
-  <!-- Unauthorized Behavior Termination Overlay -->
-  <div id="termination-overlay" class="hidden">
-    <div class="overlay-message">
-      <h2>❌ Exam Terminated</h2>
-      <p>You've exceeded the allowed tab switches or performed unauthorized actions.</p>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #e0e0e0;"></div>
+                        <span>Not Answered</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4caf50;"></div>
+                        <span>Answered</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #FFA500;"></div>
+                        <span>Marked for Review</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Panel -->
+         <div class="buttonss">
+            <div class="action-panel">
+                <div class="action-buttons">
+                    <button class="btn btn-previous" id="prevBtn" disabled>
+                        ← Previous
+                    </button>
+                    <button class="btn btn-review" id="reviewBtn">
+                        Mark for Review 
+                    </button>
+                    <button class="btn btn-save" id="nextBtn">
+                         Next →
+                    </button>
+                </div>
+            </div>
+            <div class="action-panel" style="width:400px; margin-left: 20px;">
+                <div class="action-buttons">
+                    <button class="btn btn-submit" id="submitBtn">
+                        Submit
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
+
+    <script>
+        // Quiz data and state
+        let questions = [];
+        let currentQuestion = 0;
+        let testId = "01"; // You can get this from URL or session
+        let totalSeconds = 600; // 10 minutes
+        let timerInterval;
+
+        // DOM elements
+        const questionText = document.getElementById('questionText');
+        const questionHeader = document.getElementById('questionHeader');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const questionGrid = document.getElementById('questionGrid');
+        const unattemptedCount = document.getElementById('unattemptedCount');
+        const timerEl = document.getElementById('timer');
+
+        // Timer function
+        function updateTimer() {
+            const min = Math.floor(totalSeconds / 60);
+            const sec = totalSeconds % 60;
+            timerEl.textContent = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+            totalSeconds--;
+            
+            if (totalSeconds < 0) {
+                clearInterval(timerInterval);
+                alert("Time is up! Submitting your exam.");
+                submitQuiz();
+            }
+        }
+
+        // Initialize timer
+        function startTimer() {
+            updateTimer();
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        // Fetch questions from backend
+        async function fetchQuestions() {
+            try {
+                questionText.textContent = "Loading questions...";
+                optionsContainer.innerHTML = "<div class='option'>Please wait while questions load...</div>";
+                
+                const response = await fetch(`/get_questions/${testId}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data || data.length === 0) {
+                    throw new Error('No questions found');
+                }
+                
+                questions = data.map(q => ({
+                    id: q.QID,
+                    question: q.Question,
+                    options: [q.OptionA, q.OptionB, q.OptionC, q.OptionD].filter(opt => opt),
+                    answer: q.Answer,
+                    type: q.Type.toLowerCase(),
+                    selectedAnswer: null,
+                    isMarkedForReview: false,
+                    isAttempted: false
+                }));
+                
+                if (questions.length === 0) {
+                    throw new Error('No valid questions found after processing');
+                }
+                
+                renderQuestion();
+                renderQuestionGrid();
+                updateSummary();
+                startTimer();
+                
+            } catch (error) {
+                console.error("Error loading questions:", error);
+                questionText.textContent = "Error loading questions. Please try again later.";
+                optionsContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Error:</strong> ${error.message}
+                        <button class="btn btn-sm btn-primary mt-2" onclick="fetchQuestions()">Retry</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Render current question
+        function renderQuestion() {
+            if (questions.length === 0) return;
+            
+            const q = questions[currentQuestion];
+            questionHeader.textContent = `Q${currentQuestion + 1}`;
+            questionText.textContent = q.question;
+            
+            optionsContainer.innerHTML = '';
+            
+            q.options.forEach((option, index) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = `option ${q.selectedAnswer === index ? 'selected' : ''}`;
+                optionDiv.onclick = () => selectAnswer(index);
+                
+                optionDiv.innerHTML = `
+                    <input type="radio" name="answer" ${q.selectedAnswer === index ? 'checked' : ''}>
+                    <span class="option-label">${String.fromCharCode(65 + index)}</span>
+                    <span class="option-text">${option}</span>
+                `;
+                
+                optionsContainer.appendChild(optionDiv);
+            });
+
+            // Update button states
+            document.getElementById('prevBtn').disabled = currentQuestion === 0;
+            document.getElementById('nextBtn').disabled = currentQuestion === questions.length - 1;
+            document.getElementById('reviewBtn').textContent = 
+                q.isMarkedForReview ? 'Unmark for Review' : 'Mark for Review';
+            document.getElementById('reviewBtn').classList.toggle('marked', q.isMarkedForReview);
+        }
+
+        // Select answer
+        function selectAnswer(optionIndex) {
+            questions[currentQuestion].selectedAnswer = optionIndex;
+            questions[currentQuestion].isAttempted = true;
+            renderQuestion();
+            renderQuestionGrid();
+            updateSummary();
+        }
+
+        // Mark for review
+        function toggleReview() {
+            questions[currentQuestion].isMarkedForReview = !questions[currentQuestion].isMarkedForReview;
+            renderQuestion();
+            renderQuestionGrid();
+            updateSummary();
+        }
+
+        // Next question
+        function nextQuestion() {
+            if (currentQuestion < questions.length - 1) {
+                currentQuestion++;
+                renderQuestion();
+                renderQuestionGrid();
+            }
+        }
+
+        // Previous question
+        function previousQuestion() {
+            if (currentQuestion > 0) {
+                currentQuestion--;
+                renderQuestion();
+                renderQuestionGrid();
+            }
+        }
+
+        // Navigate to specific question
+        function navigateToQuestion(questionIndex) {
+            currentQuestion = questionIndex;
+            renderQuestion();
+            renderQuestionGrid();
+        }
+
+        // Render question grid
+        function renderQuestionGrid() {
+            questionGrid.innerHTML = '';
+            
+            questions.forEach((question, index) => {
+                const button = document.createElement('button');
+                button.className = `question-btn ${getQuestionStatus(question, index)}`;
+                button.textContent = index + 1;
+                button.onclick = () => navigateToQuestion(index);
+                questionGrid.appendChild(button);
+            });
+        }
+
+        // Get question status
+        function getQuestionStatus(question, index) {
+            if (index === currentQuestion) return 'current';
+            if (question.isMarkedForReview) return 'review';
+            if (question.selectedAnswer !== null) return 'answered';
+            if (question.isAttempted) return 'attempted';
+            return 'unattempted';
+        }
+
+        // Update summary
+        function updateSummary() {
+            const unattempted = questions.filter(q => q.selectedAnswer === null && !q.isAttempted).length;
+            unattemptedCount.textContent = unattempted;
+        }
+
+        // Save answer to backend
+        function saveAnswer(status = 'answered') {
+            if (questions.length === 0) return;
+            
+            const q = questions[currentQuestion];
+            const selectedAnswers = q.selectedAnswer !== null ? [String.fromCharCode(65 + q.selectedAnswer)] : [];
+            
+            const data = {
+                test_id: testId,
+                qid: q.id,
+                selected_answers: selectedAnswers,
+                status: status
+            };
+            
+            fetch('/submit_answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            }).catch(error => console.error('Error saving answer:', error));
+        }
+
+        // Submit quiz
+async function submitQuiz() {
+    // Save any pending answer
+    saveAnswer();
+    
+    if (confirm("Are you sure you want to submit the exam?")) {
+        try {
+            const response = await fetch('/submit_exam', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    test_id: testId,
+                    email: "{{ session.email }}" // Pass user email from session
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Show simple success message
+                    const resultHtml = `
+                    <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+                        <div class="text-center px-4" style="max-width: 500px;">
+                            <!-- Animated checkmark -->
+                            <div class="mb-4">
+                                <svg width="80" height="80" viewBox="0 0 24 24" class="animate-checkmark">
+                                    <path class="checkmark-path" fill="none" stroke="#4CAF50" stroke-width="3" stroke-linecap="round" 
+                                          d="M4.5 12.5L9 17l7-7"/>
+                                    <circle class="checkmark-circle" cx="12" cy="12" r="10" fill="none" stroke="#4CAF50" 
+                                            stroke-width="2" stroke-dasharray="1000" stroke-dashoffset="1000"/>
+                                </svg>
+                            </div>
+                            
+                            <h2 class="fw-bold mb-3" style="color: #2E7D32;">Submission Complete</h2>
+                            
+                            <p class="text-muted mb-4" style="font-size: 1.1rem;">
+                                Your exam has been successfully submitted for evaluation.
+                            </p>
+                            
+                            <div class="bg-light rounded-3 p-3 mb-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">Submission Time:</span>
+                                    <span class="fw-bold">${result.timestamp}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <span class="text-muted">Reference ID:</span>
+                                    <span class="fw-bold">#${Math.floor(Math.random()*90000)+10000}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                                <button onclick="window.location.href='/logout'" 
+                                        class="btn btn-success px-4 py-2">
+                                    <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                </button>
+                                <button onclick="window.location.href='/'" 
+                                        class="btn btn-outline-secondary px-4 py-2">
+                                    <i class="bi bi-house me-2"></i>Return Home
+                                </button>
+                            </div>
+                            
+                            <p class="text-muted mt-4 small">
+                                A confirmation email has been sent to your registered address.
+                            </p>
+                        </div>
+                    </div>
+
+                    <style>
+                        .animate-checkmark {
+                            animation: scaleIn 0.5s ease-out forwards;
+                        }
+                        
+                        .checkmark-path {
+                            stroke-dasharray: 1000;
+                            stroke-dashoffset: 1000;
+                            animation: dash 1.5s ease-out forwards 0.5s;
+                        }
+                        
+                        .checkmark-circle {
+                            animation: dash 1.5s ease-out forwards;
+                        }
+                        
+                        @keyframes dash {
+                            to {
+                                stroke-dashoffset: 0;
+                            }
+                        }
+                        
+                        @keyframes scaleIn {
+                            from {
+                                transform: scale(0.8);
+                                opacity: 0;
+                            }
+                            to {
+                                transform: scale(1);
+                                opacity: 1;
+                            }
+                        }
+                    </style>
+                    `;
+                                    
+                // Replace container with results
+                document.querySelector(".container").innerHTML = resultHtml;
+            } else {
+                alert(`Error submitting exam: ${result.error}`);
+            }
+        } catch (error) {
+            console.error("Submission error:", error);
+            alert("Error submitting exam. Please try again.");
+        }
+    }
+}       // Event listeners
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            saveAnswer();
+            previousQuestion();
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            saveAnswer();
+            nextQuestion();
+        });
+
+        document.getElementById('reviewBtn').addEventListener('click', toggleReview);
+        document.getElementById('submitBtn').addEventListener('click', submitQuiz);
+
+        // Initialize
+        fetchQuestions();
+    </script>
 </body>
 </html>
