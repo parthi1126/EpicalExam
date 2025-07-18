@@ -45,7 +45,7 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        users = login_sheet.get_all_records(head=1)
+        users = user_sheet.get_all_records(head=1)
 
         for user in users:
             if str(user.get('EmployeeMailId', '')).strip().lower() == email.lower():
