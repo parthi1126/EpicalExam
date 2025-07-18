@@ -7,21 +7,21 @@ import os
 import json
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default-secret-key')  # Use environment variable
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default-secret-key')  # Use env var for security
 
-# Google Sheets Setup
-SPREADSHEET_ID = "1hyoQZpD17tsTjSh1XqgAUvfZ4Nt3kwV7zxphosruXeE"
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+# 🟨 Constants
+GOOGLE_SHEET_ID = "1hyoQZpD17tsTjSh1XqgAUvfZ4Nt3kwV7zxphosruXeE"
+GOOGLE_SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-# Load credentials from environment variable
-google_creds = json.loads(os.environ.get("GOOGLE_CREDENTIALS_JSON", "{}"))
-creds = ServiceAccountCredentials.from_json_keyfile_dict(google_creds, scope)
-client = gspread.authorize(creds)
+# 🟩 Load service account credentials from env var
+google_service_account = json.loads(os.environ.get("GOOGLE_CREDENTIALS_JSON", "{}"))
+google_creds = ServiceAccountCredentials.from_json_keyfile_dict(google_service_account, GOOGLE_SCOPE)
+gspread_client = gspread.authorize(google_creds)
 
-# Sheets
-login_sheet = client.open_by_key(SPREADSHEET_ID).worksheet("USER")
+# Google Sheets setup
+user_sheet = gspread_client.open_by_key(GOOGLE_SHEET_ID).worksheet("USER")
 
-# Decorator
+# 🔒 Decorator for login required
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -31,14 +31,14 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Routes
+# 🧾 Login Route
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
 
-        users = login_sheet.get_all_records(head=1)
+        users = user_sheet.get_all_records(head=1)
 
         for user in users:
             sheet_email = str(user.get('EmployeeMailId', '')).strip().lower()
@@ -61,21 +61,25 @@ def login():
 
     return render_template('login.html')
 
+# 👨‍💼 Admin Dashboard
 @app.route('/admin_dashboard')
 @login_required
 def admin_dashboard():
     return "<h2>📊 Admin Dashboard</h2>"
 
+# 📘 Instructions Page
 @app.route('/instructions')
 @login_required
 def instructions():
     return render_template('instructions.html', fullname=session.get('fullname'))
 
+# 📝 Exam Page
 @app.route('/exam')
 @login_required
 def exam():
     return render_template('exam.html', fullname=session.get('fullname'))
 
+# 📨 Submit Answer
 @app.route('/submit_answer', methods=['POST'])
 @login_required
 def submit_answer():
@@ -86,7 +90,7 @@ def submit_answer():
     selected = ','.join(data.get('selected_answers', []))
     status = data.get('status', 'answered')
 
-    answer_sheet = client.open_by_key(SPREADSHEET_ID).worksheet(f"Answers_{test_id}")
+    answer_sheet = gspread_client.open_by_key(GOOGLE_SHEET_ID).worksheet(f"Answers_{test_id}")
     timestamp = datetime.now().isoformat()
 
     records = answer_sheet.get_all_records(head=1)
@@ -102,19 +106,20 @@ def submit_answer():
 
     return jsonify({'success': True})
 
+# 📤 Get Questions
 @app.route('/get_questions/<test_id>')
 @login_required
 def get_questions(test_id):
     try:
-        q_sheet = client.open_by_key(SPREADSHEET_ID).worksheet(f"Questions_{test_id}")
+        q_sheet = gspread_client.open_by_key(GOOGLE_SHEET_ID).worksheet(f"Questions_{test_id}")
         questions = q_sheet.get_all_records(head=1)
         return jsonify(questions)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# 🚪 Logout
 @app.route('/logout')
 def logout():
     session.clear()
     flash('✅ Logged out', 'info')
     return redirect(url_for('login'))
-
