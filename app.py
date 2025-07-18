@@ -30,6 +30,7 @@ gspread_client = gspread.authorize(google_creds)
 login_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet("USER")
 
 # Decorator for login required
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -139,38 +140,19 @@ def submit_exam():
                 "Correct", "Total", "Percentage"
             ])
         
-        # Get questions to calculate score
-        q_sheet = spreadsheet.worksheet(f"Questions_TEST{test_id}")
-        questions = q_sheet.get_all_records(head=1)
-        
-        # Get user's answers (you'll need to store these somewhere during the test)
-        # For now, we'll just calculate a dummy score
-        # In a real implementation, you'd track answers during the test
-        correct = 0
-        total = len(questions)
-        
-        # Calculate score (this is simplified - you'd compare actual answers)
-        # For demo purposes, we'll assume 70% correct
-        correct = int(total * 0.7)
-        score = correct
-        percentage = (correct / total) * 100 if total > 0 else 0
-        
-        # Record the result
+        # Record the submission (without calculating score for now)
         results_sheet.append_row([
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             email,
             session.get('fullname'),
-            score,
-            correct,
-            total,
-            f"{percentage:.2f}%"
+            "N/A",  # Score
+            "N/A",  # Correct
+            "N/A",  # Total
+            "N/A"   # Percentage
         ])
         
         return jsonify({
             'success': True,
-            'score': score,
-            'correct': correct,
-            'total': total,
             'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
         
