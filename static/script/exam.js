@@ -1,163 +1,120 @@
 document.addEventListener("DOMContentLoaded", function () {
-    // State variables
-    const state = {
-        examStarted: false,
-        switchCount: 0,
-        timer: 60 * 90, // 90 minutes in seconds
-        countdownInterval: null,
-        examStartTime: null,
-        testId: "TEST01",
-        gracePeriod: 5 // seconds
-    };
+  let examStarted = false;
+  let switchCount = 0;
+  let timer = 60 * 90;
+  let countdownInterval = null;
+  let examStartTime = null;
 
-    // DOM elements
-    const elements = {
-        terminationOverlay: document.getElementById('termination-overlay'),
-        countdownElement: document.getElementById("time"),
-        controls: document.getElementById('controls'),
-        footer: document.querySelector('footer')
-    };
+  const testId = "TEST01";
+  const terminationOverlay = document.getElementById('termination-overlay');
+  const countdownElement = document.getElementById("time");
 
-    // Initialize UI
-    function initUI() {
-        elements.terminationOverlay.classList.add('hidden');
-        elements.controls.style.display = 'none';
-        updateTimerDisplay();
+  terminationOverlay.classList.add('hidden');
+
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a', 's', 'p', 'u'].includes(e.key.toLowerCase())) {
+      e.preventDefault();
+    }
+    if (e.key === 'F12') e.preventDefault();
+  });
+
+  ["copy", "paste", "cut", "contextmenu"].forEach(evt =>
+    document.addEventListener(evt, (e) => e.preventDefault())
+  );
+
+  // Visibility change – termination logic
+  document.addEventListener("visibilitychange", () => {
+    if (!examStarted) return;
+
+    const now = Date.now();
+    const secondsSinceStart = (now - examStartTime) / 1000;
+
+    if (secondsSinceStart < 5) {
+      console.log("⚠️ Ignoring visibility change during grace period.");
+      return;
     }
 
-    // Security: Prevent keyboard shortcuts
-    function setupSecurity() {
-        document.addEventListener('keydown', function (e) {
-            // Block common shortcuts
-            if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a', 's', 'p', 'u'].includes(e.key.toLowerCase())) {
-                e.preventDefault();
-            }
-            // Block F12 (dev tools)
-            if (e.key === 'F12') e.preventDefault();
-        });
+    if (document.hidden) {
+      switchCount++;
+      if (switchCount <= 3) {
+        alert(`⚠️ Warning ${switchCount}/3: Please stay on the exam tab.`);
+      } else {
+        terminateExam("Exceeded allowed tab switches (3)");
+      }
+    }
+  });
 
-        // Prevent clipboard and context menu operations
-        ["copy", "paste", "cut", "contextmenu"].forEach(evt => {
-            document.addEventListener(evt, (e) => e.preventDefault());
-        });
+  function updateTimer() {
+    const minutes = Math.floor(timer / 60);
+    const seconds = timer % 60;
+    countdownElement.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+    if (timer <= 0) {
+      terminateExam("⏰ Time's up! Exam submitted automatically.");
     }
 
-    // Handle visibility changes (tab switching)
-    function handleVisibilityChange() {
-        if (!state.examStarted) return;
+    timer--;
+  }
 
-        const now = Date.now();
-        const secondsSinceStart = (now - state.examStartTime) / 1000;
+window.startExam = function () {
+  if (examStarted) return;
 
-        // Ignore during grace period
-        if (secondsSinceStart < state.gracePeriod) {
-            console.log("⚠️ Ignoring visibility change during grace period.");
-            return;
-        }
+  // Delay start until fullscreen is confirmed
+  function beginExamAfterFullscreen() {
+    // Now begin
+    examStarted = true;
+    examStartTime = Date.now(); // Start time
+    countdownInterval = setInterval(updateTimer, 1000);
 
-        if (document.hidden) {
-            state.switchCount++;
-            if (state.switchCount <= 3) {
-                alert(`⚠️ Warning ${state.switchCount}/3: Please stay on the exam tab.`);
-            } else {
-                terminateExam("Exceeded allowed tab switches (3)");
-            }
-        }
-    }
+    document.querySelector('footer').style.display = 'none';
+    document.getElementById('controls').style.display = 'block';
 
-    // Update timer display
-    function updateTimerDisplay() {
-        const minutes = Math.floor(state.timer / 60);
-        const seconds = state.timer % 60;
-        elements.countdownElement.textContent = 
-            `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    loadQuestion(1);
+  }
 
-        if (state.timer <= 0) {
-            terminateExam("⏰ Time's up! Exam submitted automatically.");
-        }
-    }
+  // Request fullscreen, then wait for event
+  const docEl = document.documentElement;
+  if (docEl.requestFullscreen) {
+    docEl.requestFullscreen().then(() => {
+      // Wait 1 second to ensure browser focus
+      setTimeout(beginExamAfterFullscreen, 1000);
+    }).catch(err => {
+      console.error("Fullscreen failed", err);
+      alert("⚠️ Fullscreen failed. Please allow fullscreen to begin the exam.");
+    });
+  } else {
+    // Fallback: start immediately (not recommended)
+    beginExamAfterFullscreen();
+  }
+};
 
-    // Timer countdown function
-    function updateTimer() {
-        state.timer--;
-        updateTimerDisplay();
-    }
 
-    // Start the exam
-    window.startExam = function () {
-        if (state.examStarted) return;
+  function terminateExam(reason = "Exam terminated") {
+    if (countdownInterval) clearInterval(countdownInterval);
+    if (document.fullscreenElement) document.exitFullscreen();
 
-        function beginExam() {
-            state.examStarted = true;
-            state.examStartTime = Date.now();
-            state.countdownInterval = setInterval(updateTimer, 1000);
+    terminationOverlay.querySelector('.overlay-message h2').textContent = '❌ Exam Terminated';
+    terminationOverlay.querySelector('.overlay-message p').textContent = reason;
+    terminationOverlay.classList.remove('hidden');
 
-            elements.footer.style.display = 'none';
-            elements.controls.style.display = 'block';
+    fetch("/submit_answer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        test_id: testId,
+        qid: "terminated",
+        selected_answers: [],
+        status: "terminated"
+      })
+    }).catch(console.error);
 
-            loadQuestion(1);
-        }
+    setTimeout(() => window.location.href = "/logout", 5000);
+  }
 
-        // Request fullscreen first
-        const docEl = document.documentElement;
-        if (docEl.requestFullscreen) {
-            docEl.requestFullscreen()
-                .then(() => {
-                    // Small delay to ensure browser focus
-                    setTimeout(beginExam, 1000);
-                })
-                .catch(err => {
-                    console.error("Fullscreen failed:", err);
-                    alert("⚠️ Fullscreen failed. Please allow fullscreen to begin the exam.");
-                });
-        } else {
-            // Fallback without fullscreen (not recommended)
-            beginExam();
-        }
-    };
+  function loadQuestion(qNumber) {
+    console.log("📘 Load Question:", qNumber);
+  }
 
-    // Terminate the exam
-    function terminateExam(reason = "Exam terminated") {
-        // Clear intervals and exit fullscreen
-        clearInterval(state.countdownInterval);
-        if (document.fullscreenElement) {
-            document.exitFullscreen().catch(console.error);
-        }
-
-        // Show termination overlay
-        const overlay = elements.terminationOverlay;
-        overlay.querySelector('h2').textContent = '❌ Exam Terminated';
-        overlay.querySelector('p').textContent = reason;
-        overlay.classList.remove('hidden');
-
-        // Send termination to server
-        fetch("/submit_answer", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                test_id: state.testId,
-                qid: "terminated",
-                selected_answers: [],
-                status: "terminated"
-            })
-        }).catch(console.error);
-
-        // Redirect after delay
-        setTimeout(() => {
-            window.location.href = "/logout";
-        }, 5000);
-    }
-
-    // Load a question
-    function loadQuestion(qNumber) {
-        console.log("Loading question:", qNumber);
-        // Implementation would go here
-    }
-
-    // Event listeners
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    // Initialize
-    initUI();
-    setupSecurity();
+  updateTimer();
+  document.getElementById('controls').style.display = 'none';
 });
