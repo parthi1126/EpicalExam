@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>General Instructions</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <style>
+    body {
+      background: linear-gradient(to bottom right, #e8f5e9, #c8e6c9);
+      font-family: "Segoe UI", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 30px 20px;
+    }
+
+    .instruction-box {
+      background: #fff;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 128, 0, 0.15);
+      max-width: 900px;
+      width: 100%;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .company {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .company img {
+      height: 50px;
+    }
+
+    .company-name {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #065f46;
+    }
+
+    .candidate-name {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #1b5e20;
+    }
+
+    .title {
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.4rem;
+    color: #2e7d32;
+    text-decoration: underline;
+    margin-bottom: 25px;
+    }
+
+
+    .instructions ol {
+      padding-left: 20px;
+      margin-bottom: 25px;
+    }
+
+    .instructions li {
+      margin-bottom: 10px;
+      line-height: 1.6;
+    }
+
+    .legend-box {
+      border: 1px solid #ccc;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+      margin-right: 10px;
+      border: 1px solid #888;
+    }
+
+    .red { background-color: #ef4444; }
+    .green { background-color: #4ade80; }
+    .yellow { background-color: #facc15; }
+    .violet { background-color: #a78bfa; }
+    .gray { background-color: #9ca3af; }
+    .white { background-color: #ffffff; }
+
+    .form-check {
+      margin-bottom: 20px;
+    }
+
+    .start-btn {
+      width: 100%;
+      font-weight: bold;
+      padding: 12px;
+      font-size: 1rem;
+    }
+
+    .start-btn:disabled {
+      background-color: #a5d6a7 !important;
+      border-color: transparent;
+      cursor: not-allowed;
+    }
+
+    .countdown {
+      text-align: center;
+      margin-top: 15px;
+      font-weight: bold;
+      color: #065f46;
+      font-size: 1rem;
+    }
+
+    .good-luck {
+      text-align: center;
+      margin-top: 10px;
+      color: #15803d;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    @media (max-width: 576px) {
+      .company-name {
+        font-size: 1.2rem;
+      }
+
+      .title {
+        font-size: 1.1rem;
+      }
+
+      .candidate-name {
+        text-align: right;
+        width: 100%;
+        margin-top: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="instruction-box">
+    <!-- Header with logo, company name, candidate name -->
+    <div class="header">
+      <div class="company">
+        <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Company Logo" />
+        <div class="company-name">EPICAL LAYOUTS</div>
+      </div>
+      <div class="candidate-name">Candidate: <strong>{{ fullname }}</strong></div>
+    </div>
+
+    <!-- Page Title -->
+    <div class="title"><underline>General Instructions </underline></div>
+
+    <!-- Instructions -->
+    <div class="instructions">
+      <ol>
+        <li>Click <strong>Start Test</strong> to begin the exam.</li>
+        <li>The countdown timer will begin immediately.</li>
+        <li>Select the correct option to answer each question.</li>
+        <li>You can change your answer anytime during the exam.</li>
+        <li>Click on <strong>Next</strong> to move to the next question.</li>
+        <li>Use <strong>Mark for Review</strong> to revisit later.</li>
+        <li>Questions can be navigated from the side panel.</li>
+        <li>The color-coded legend below shows question status:</li>
+      </ol>
+
+      <!-- Color Legend -->
+      <div class="legend-box">
+        <div class="legend-item"><div class="legend-color red"></div> Not Answered</div>
+        <div class="legend-item"><div class="legend-color green"></div> Answered</div>
+        <div class="legend-item"><div class="legend-color yellow"></div> Not Answered & Marked for Review</div>
+        <div class="legend-item"><div class="legend-color violet"></div> Answered & Marked for Review</div>
+        <div class="legend-item"><div class="legend-color gray"></div> Dumped</div>
+        <div class="legend-item"><div class="legend-color white" style="border: 1px solid #ccc;"></div> Not Visited</div>
+      </div>
+
+      <ol start="9">
+        <li>You may navigate freely between questions.</li>
+        <li>All answered questions will be counted for final score.</li>
+        <li>Don’t click <strong>Final Submit</strong> unless you're done.</li>
+        <li>Your score will be shown immediately after the test.</li>
+      </ol>
+    </div>
+
+    <!-- Checkbox and Start Button -->
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="agreeCheckbox">
+      <label class="form-check-label" for="agreeCheckbox">
+        I have read and understood the instructions above.
+      </label>
+    </div>
+
+    <button id="startExamBtn" class="btn btn-success start-btn" disabled>Start Test</button>
+
+    <!-- Countdown and Good Luck Message -->
+    <div id="countdown" class="countdown"></div>
+    <div id="goodLuckMsg" class="good-luck" style="display: none;">Good Luck! </div>
+  </div>
+
+  <script>
+    const checkbox = document.getElementById('agreeCheckbox');
+    const button = document.getElementById('startExamBtn');
+    const countdown = document.getElementById('countdown');
+    const goodLuck = document.getElementById('goodLuckMsg');
+
+    checkbox.addEventListener('change', () => {
+      button.disabled = !checkbox.checked;
+    });
+
+    button.addEventListener('click', () => {
+      button.disabled = true;
+      checkbox.disabled = true;
+      let seconds = 10;
+
+      countdown.textContent = `⏳ Starting in ${seconds} seconds...`;
+      goodLuck.style.display = 'block';
+
+      const timer = setInterval(() => {
+        seconds--;
+        if (seconds > 0) {
+          countdown.textContent = `⏳ Starting in ${seconds} seconds...`;
+        } else {
+          clearInterval(timer);
+          countdown.textContent = "✅ Redirecting to exam...";
+          setTimeout(() => {
+            window.location.href = "{{ url_for('exam') }}";
+          }, 1000);
+        }
+      }, 1000);
+    });
+  </script>
+
+</body>
+</html>

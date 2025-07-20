@@ -117,38 +117,62 @@ def submit_exam():
         data = request.get_json()
         test_id = data.get('test_id')
         email = session.get('email')
+        time_taken = data.get('time_taken')  # Get time taken from frontend
         
         if not test_id or not email:
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
-        # Get the test results sheet
-        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
+        # Get the test questions and answers
+        worksheet_name = f"Questions_TEST{test_id}"
+        q_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet(worksheet_name)
+
+        questions = q_sheet.get_all_records(head=1)
         
-        # Try to find existing results sheet or create new
+        # Get all user answers
+        user_answers = data.get('answers', {})
+        
+        # Calculate score
+        correct = 0
+        total = len(questions)
+        
+        for question in questions:
+            qid = str(question['QID'])
+            if qid in user_answers and user_answers[qid] == question['Answer']:
+                correct += 1
+        
+        score = correct
+        percentage = (correct / total) * 100 if total > 0 else 0
+        
+        # Get or create results sheet
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
+
         try:
             results_sheet = spreadsheet.worksheet(f"Results_TEST{test_id}")
+            # Check if headers exist
+            headers = results_sheet.row_values(1)
+            if "TimeTaken" not in headers:
+                results_sheet.insert_cols([["TimeTaken"]], len(headers)+1)
         except gspread.exceptions.WorksheetNotFound:
-            # Create a new worksheet if it doesn't exist
             results_sheet = spreadsheet.add_worksheet(
                 title=f"Results_TEST{test_id}", 
                 rows=100, 
-                cols=10
+                cols=11
             )
-            # Add headers
             results_sheet.append_row([
                 "Timestamp", "Email", "FullName", "Score", 
-                "Correct", "Total", "Percentage"
+                "Correct", "Total", "Percentage", "TimeTaken"
             ])
         
-        # Record the submission (without calculating score for now)
+        # Record the submission with time taken
         results_sheet.append_row([
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             email,
             session.get('fullname'),
-            "N/A",  # Score
-            "N/A",  # Correct
-            "N/A",  # Total
-            "N/A"   # Percentage
+            score,
+            correct,
+            total,
+            f"{percentage:.2f}%",
+            time_taken  # Store the time taken
         ])
         
         return jsonify({
@@ -175,6 +199,49 @@ def submit_answer():
         
         # In a real implementation, you'd store these answers in a session or database
         # For now, we'll just return success
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+@app.route('/log_violation', methods=['POST'])
+@login_required
+def log_violation():
+    try:
+        data = request.get_json()
+        test_id = data.get('test_id')
+        email = session.get('email')
+        violation = data.get('violation')
+        violation_count = data.get('violation_count')
+        
+        if not all([test_id, email, violation, violation_count]):
+            return jsonify({'success': False, 'error': 'Missing data'}), 400
+        
+        # Get or create violations sheet
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
+
+        try:
+            violations_sheet = spreadsheet.worksheet(f"Violations_TEST{test_id}")
+        except gspread.exceptions.WorksheetNotFound:
+            violations_sheet = spreadsheet.add_worksheet(
+                title=f"Violations_TEST{test_id}", 
+                rows=100, 
+                cols=6
+            )
+            violations_sheet.append_row([
+                "Timestamp", "Email", "FullName", "Violation", 
+                "ViolationCount", "ActionTaken"
+            ])
+        
+        # Record the violation
+        violations_sheet.append_row([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            email,
+            session.get('fullname'),
+            violation,
+            violation_count,
+            "Warning" if violation_count < 3 else "Exam Terminated"
+        ])
+        
         return jsonify({'success': True})
         
     except Exception as e:
