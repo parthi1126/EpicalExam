@@ -45,16 +45,21 @@ def login_required(f):
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '').strip()
 
-        users = login_sheet.get_all_records(head=1)
+        # Get data with proper header handling
+        all_data = login_sheet.get_all_values()
+        headers = [h.strip() for h in all_data[0]]  # Clean headers
+        users = []
+        for row in all_data[1:]:
+            users.append(dict(zip(headers, row)))
 
         for user in users:
-            sheet_email = str(user.get('EmployeeMailId', '')).strip().lower()
-            sheet_password = str(user.get('Password', '')).strip()
-
-            if email.lower() == sheet_email:
+            sheet_email = user.get('EmployeeMailId', '').strip().lower()
+            sheet_password = user.get('Password', '').strip()  # Now works with cleaned header
+            
+            if email == sheet_email:
                 if password == sheet_password:
                     session['logged_in'] = True
                     session['email'] = email
@@ -63,7 +68,7 @@ def login():
                     return redirect(url_for('admin_dashboard' if session['role'] == 'admin' else 'instructions'))
                 else:
                     flash('Incorrect password', 'danger')
-                break
+                    break
         else:
             flash('Email not found', 'danger')
 
@@ -72,83 +77,152 @@ def login():
     return render_template('login.html')
 
 
+
 @app.route('/admin_dashboard')
+
 @login_required
+
+
 def admin_dashboard():
     return "<h2>📊 Admin Dashboard</h2>"
 
 
 @app.route('/instructions')
-@login_required
 def instructions():
-    return render_template('instructions.html', fullname=session.get('fullname'))
+    try:
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
+
+        # Fetch instructions
+        instructions_sheet = spreadsheet.worksheet("Instructions")
+        instructions = instructions_sheet.col_values(1)
+
+        # Fetch metadata
+        meta_sheet = spreadsheet.worksheet("TIME")
+        meta_records = meta_sheet.get_all_records()
+        meta = meta_records[0] if meta_records else {}
+
+        duration = meta.get('Duration', 'N/A')
+        total_questions = meta.get('TotalQuestions', 'N/A')
+
+    except Exception as e:
+        instructions = ["❌ Failed to load instructions: " + str(e)]
+        duration = "N/A"
+        total_questions = "N/A"
+
+    return render_template('instructions.html',
+                           fullname=session.get('fullname'),
+                           instructions=instructions,
+                           duration=duration,
+                           total_questions=total_questions)
+
+
 
 
 @app.route('/exam')
-@login_required
 def exam():
-    return render_template('exam.html', fullname=session.get('fullname'))
+    try:
+        # Get time from TIME sheet
+        time_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet("TIME")
+        time_data = time_sheet.get_all_records()
+        
+        # Get raw duration value from sheet
+        raw_duration = time_data[0]['Duration'] if time_data else "10:00"
+        
+        # Handle both cases: "HH:MM" format or total minutes (integer)
+        if isinstance(raw_duration, str) and ':' in raw_duration:
+            # Case 1: "HH:MM" format (e.g., "90:00")
+            hours, minutes = map(int, raw_duration.split(':'))
+            total_seconds = (hours * 3600) + (minutes * 60)
+            duration = f"{hours}:{minutes:02d}"  # Reformat for display
+        else:
+            # Case 2: Total minutes (e.g., 90)
+            try:
+                duration_minutes = int(raw_duration)
+                hours = duration_minutes // 60
+                minutes = duration_minutes % 60
+                total_seconds = duration_minutes * 60
+                duration = f"{hours}:{minutes:02d}"  # Convert to "H:MM" format
+            except (ValueError, TypeError):
+                raise ValueError("Invalid duration format in sheet")
+        
+        return render_template('exam.html', 
+                            fullname=session.get('fullname'),
+                            duration=duration,
+                            total_seconds=total_seconds)
+        
+    except Exception as e:
+        print(f"Error loading time: {e}")
+        # Default values if there's an error
+        return render_template('exam.html',
+                            fullname=session.get('fullname'),
+                            duration="10:00",
+                            total_seconds=600)
 
 
 
 
 @app.route('/get_questions/<test_id>')
-@login_required
 def get_questions(test_id):
     try:
-        # For TEST01 use Questions_TEST01
         worksheet_name = f"Questions_TEST{test_id}"
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet(worksheet_name)
         
-        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
-        q_sheet = spreadsheet.worksheet(worksheet_name)
-        questions = q_sheet.get_all_records(head=1)
+        questions = spreadsheet.get_all_records(head=1)
+        
+        # Ensure Type field is properly formatted
+        for q in questions:
+            q['Type'] = q.get('Type', 'single').lower().strip()
         
         return jsonify(questions)
-        
-    except gspread.exceptions.WorksheetNotFound:
-        return jsonify({'error': f'Worksheet {worksheet_name} not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+
 @app.route('/submit_exam', methods=['POST'])
-@login_required
 def submit_exam():
     try:
         data = request.get_json()
         test_id = data.get('test_id')
         email = session.get('email')
-        time_taken = data.get('time_taken')  # Get time taken from frontend
+        time_taken = data.get('time_taken')
         
         if not test_id or not email:
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
-        # Get the test questions and answers
         worksheet_name = f"Questions_TEST{test_id}"
-        q_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet(worksheet_name)
-
-        questions = q_sheet.get_all_records(head=1)
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet(worksheet_name)
+        questions = spreadsheet.get_all_records(head=1)
         
-        # Get all user answers
-        user_answers = data.get('answers', {})
-        
-        # Calculate score
         correct = 0
         total = len(questions)
         
         for question in questions:
             qid = str(question['QID'])
-            if qid in user_answers and user_answers[qid] == question['Answer']:
-                correct += 1
+            user_answer = data.get('answers', {}).get(qid, '')
+            
+            # Handle both single and multi-select questions
+            if question['Type'].lower() == 'multi':
+                # Normalize answers - remove spaces and make uppercase
+                correct_answers = set(a.strip().upper() for a in question['Answer'].split(','))
+                user_answers = set(a.strip().upper() for a in user_answer.split(',')) if user_answer else set()
+                
+                # All-or-nothing scoring (full point only if exact match)
+                if correct_answers == user_answers:
+                    correct += 1
+                # Alternative: Partial credit (1 point per correct answer, max 1 point)
+                # correct += min(1, len(correct_answers & user_answers) / len(correct_answers))
+            else:  # single answer
+                if user_answer and user_answer.strip().upper() == question['Answer'].strip().upper():
+                    correct += 1
         
         score = correct
         percentage = (correct / total) * 100 if total > 0 else 0
         
         # Get or create results sheet
         spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
-
         try:
             results_sheet = spreadsheet.worksheet(f"Results_TEST{test_id}")
-            # Check if headers exist
             headers = results_sheet.row_values(1)
             if "TimeTaken" not in headers:
                 results_sheet.insert_cols([["TimeTaken"]], len(headers)+1)
@@ -163,7 +237,7 @@ def submit_exam():
                 "Correct", "Total", "Percentage", "TimeTaken"
             ])
         
-        # Record the submission with time taken
+        # Record the submission
         results_sheet.append_row([
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             email,
@@ -172,11 +246,15 @@ def submit_exam():
             correct,
             total,
             f"{percentage:.2f}%",
-            time_taken  # Store the time taken
+            time_taken
         ])
         
         return jsonify({
             'success': True,
+            'score': score,
+            'correct': correct,
+            'total': total,
+            'percentage': f"{percentage:.2f}%",
             'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
         
@@ -204,7 +282,6 @@ def submit_answer():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 @app.route('/log_violation', methods=['POST'])
-@login_required
 def log_violation():
     try:
         data = request.get_json()
@@ -218,7 +295,6 @@ def log_violation():
         
         # Get or create violations sheet
         spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
-
         try:
             violations_sheet = spreadsheet.worksheet(f"Violations_TEST{test_id}")
         except gspread.exceptions.WorksheetNotFound:

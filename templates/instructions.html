@@ -236,8 +236,11 @@
       <div class="exam-header">
         <h2>Exam Instructions</h2>
         <div class="exam-meta">
-          <span class="meta-item"><strong>Duration:</strong> 3:00 hours</span>
-          <span class="meta-item"><strong>Questions:</strong> 10</span>
+          <div class="exam-meta">
+            <span class="meta-item"><strong>Duration:</strong> {{ duration }} hrs</span>
+            <span class="meta-item"><strong>Questions:</strong> {{ total_questions }}</span>
+          </div>
+
         </div>
       </div>
       <center><div class="candidate-name">Candidate: <strong>{{ fullname }}</strong></div></center>
@@ -248,26 +251,12 @@
   
     <!-- Instructions -->
     <div class="instructions-container">
-        <ol class="instruction-list">
-          <li>
-            <strong>Read all instructions carefully</strong> before beginning the exam.
-          </li>
-          <li>
-            <strong>Time management:</strong> The exam must be completed within the 3-hour time limit.
-          </li>
-          <li>
-            <strong>No external resources:</strong> The use of dictionaries, calculators, or any online/offline references is strictly prohibited.
-          </li>
-          <li>
-            <strong>Technical requirements:</strong> Ensure you have a stable internet connection before starting.
-          </li>
-          <li>
-            <strong>Navigation warning:</strong> Do not close, refresh, or navigate away from the exam page once started.
-          </li>
-          <li>
-            <strong>Grading policy:</strong> There will be negative marking - 7% of the question's value will be deducted for each incorrect answer.
-          </li>
-        </ol>
+      <ol class="instruction-list">
+        {% for line in instructions %}
+          <li>{{ line }}</li>
+        {% endfor %}
+      </ol>
+
 
       <!-- Color Legend -->
       <div class="important-note">
@@ -322,7 +311,7 @@
           countdown.textContent = `⏳ Starting in ${seconds} seconds...`;
         } else {
           clearInterval(timer);
-          countdown.textContent = "✅ Redirecting to exam...";
+          countdown.textContent = "Redirecting to exam...";
           setTimeout(() => {
             window.location.href = "{{ url_for('exam') }}";
           }, 1000);
