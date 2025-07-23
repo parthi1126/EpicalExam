@@ -29,25 +29,6 @@ gspread_client = gspread.authorize(google_creds)
 # Access the USER worksheet
 login_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet("USER")
 
-# Decorator for login required
-
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from functools import wraps
-from datetime import datetime
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-
-app = Flask(__name__)
-app.secret_key = 'your-very-secure-key'  # Change to a strong key
-
-# Google Sheets Setup
-SPREADSHEET_ID = "1hyoQZpD17tsTjSh1XqgAUvfZ4Nt3kwV7zxphosruXeE"
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
-client = gspread.authorize(creds)
-
-# Sheets
-login_sheet = client.open_by_key(SPREADSHEET_ID).worksheet("USER")
 
 # Decorator
 def login_required(f):
@@ -122,7 +103,7 @@ def admin_dashboard():
 @login_required
 def instructions():
     try:
-        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
         instructions_sheet = spreadsheet.worksheet("Instructions")
         instructions = instructions_sheet.col_values(1)
         meta_sheet = spreadsheet.worksheet("TIME")
@@ -146,7 +127,7 @@ def instructions():
 @login_required
 def exam():
     try:
-        time_sheet = client.open_by_key(SPREADSHEET_ID).worksheet("TIME")
+        time_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet("TIME")
         time_data = time_sheet.get_all_records()
         raw_duration = time_data[0]['Duration'] if time_data else "10:00"
         
@@ -181,7 +162,7 @@ def exam():
 def get_questions(test_id):
     try:
         worksheet_name = f"Questions_TEST{test_id}"
-        q_sheet = client.open_by_key(SPREADSHEET_ID).worksheet(worksheet_name)
+        q_sheet =gspread_client.open_by_key(SPREADSHEET_ID).worksheet(worksheet_name)
         questions = q_sheet.get_all_records(head=1)
         
         for q in questions:
@@ -222,7 +203,7 @@ def submit_exam():
             login_sheet.update_cell(user_row, is_active_col, 'False')
 
         worksheet_name = f"Questions_TEST{test_id}"
-        q_sheet = client.open_by_key(SPREADSHEET_ID).worksheet(worksheet_name)
+        q_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet(worksheet_name)
         questions = q_sheet.get_all_records(head=1)
         
         correct = 0
@@ -244,7 +225,7 @@ def submit_exam():
         score = correct
         percentage = (correct / total) * 100 if total > 0 else 0
         
-        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
         try:
             results_sheet = spreadsheet.worksheet(f"Results_TEST{test_id}")
             headers = results_sheet.row_values(1)
@@ -294,7 +275,7 @@ def submit_answer():
         selected_answers = data.get('selected_answers', '')
         status = data.get('status', 'answered')
         
-        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
         try:
             answers_sheet = spreadsheet.worksheet(f"Answers_TEST{test_id}")
         except gspread.exceptions.WorksheetNotFound:
@@ -333,7 +314,7 @@ def log_violation():
         if not all([test_id, email, violation, violation_count]):
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
-        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
         try:
             violations_sheet = spreadsheet.worksheet(f"Violations_TEST{test_id}")
         except gspread.exceptions.WorksheetNotFound:
@@ -373,7 +354,7 @@ def save_exam_state():
         if not all([test_id, email, state]):
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
-        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
         try:
             state_sheet = spreadsheet.worksheet(f"States_TEST{test_id}")
         except gspread.exceptions.WorksheetNotFound:
@@ -424,7 +405,7 @@ def get_exam_state(test_id, email):
         if email != session.get('email'):
             return jsonify({'success': False, 'error': 'Unauthorized access'}), 403
         
-        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
         try:
             state_sheet = spreadsheet.worksheet(f"States_TEST{test_id}")
         except gspread.exceptions.WorksheetNotFound:
@@ -462,7 +443,7 @@ def clear_exam_state():
         if not all([test_id, email]):
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
-        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
         try:
             state_sheet = spreadsheet.worksheet(f"States_TEST{test_id}")
         except gspread.exceptions.WorksheetNotFound:
