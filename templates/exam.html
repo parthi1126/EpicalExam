@@ -71,14 +71,12 @@
             padding: 25px;
             display: flex;
             flex-direction: column;
-
-            min-height: 500px; /* Base height */
+            min-height: 500px;
             transition: min-height 0.3s ease;
         }
 
         .question-panel.has-image {
-            min-height: 650px; /* Taller height when image is present */
-
+            min-height: 650px;
         }
 
         .question-header {
@@ -121,7 +119,7 @@
             border-color: #007bff;
         }
 
-        .option input[type="radio"],.option input[type="checkbox"]  {
+        .option input[type="radio"], .option input[type="checkbox"] {
             margin-right: 12px;
             transform: scale(1.2);
         }
@@ -220,22 +218,19 @@
             cursor: not-allowed;
         }
 
-        /* Navigation Panel Styles */
         .navigation-panel {
             background: white;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
-
-            height: 500px; /* Matches base question panel height */
+            height: 500px;
             transition: height 0.3s ease;
-            overflow: hidden; /* Ensures consistent rounded corners */
+            overflow: hidden;
         }
 
         .navigation-panel.tall {
-            height: 700px; /* Matches tall question panel height */
-
+            height: 700px;
         }
 
         .nav-header {
@@ -369,7 +364,6 @@
             display: flex;
         }
 
-        /* Custom Modal Animation */
         .modal.fade .modal-dialog {
             transform: translateY(-50px);
             transition: transform 0.3s ease-out;
@@ -399,7 +393,6 @@
             .buttonss {
                 flex-direction: column;
             }
-
             
             .question-panel,
             .question-panel.has-image,
@@ -408,10 +401,8 @@
                 min-height: auto;
                 height: auto;
             }
-
         }
     </style>
-
 </head>
 <body>
     <header>
@@ -546,14 +537,64 @@
         </div>
     </div>
 
+    <!-- Violation Warning Modal -->
+    <div class="modal fade" id="violationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning bg-opacity-10">
+                    <h5 class="modal-title">⚠️ Exam Violation Warning</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-warning bg-opacity-10 p-2 rounded-circle me-3">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="#ffc107">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h6 class="mb-1" id="violationMessage"></h6>
+                            <p class="small text-muted mb-0" id="violationDetail"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full-Screen Prompt Modal -->
+    <div class="modal fade" id="fullscreenPromptModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title">Enter Full-Screen Mode</h5>
+                </div>
+                <div class="modal-body">
+                    <p>This exam requires full-screen mode to proceed. Please click the button below to enter full-screen mode.</p>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-primary" id="enterFullscreenBtn">Enter Full-Screen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <script>
     // Quiz data and state
     let questions = [];
     let currentQuestion = 0;
     let testId = "01";
-    let totalSeconds = parseInt(initialTotalSeconds) || 600; // Ensure it's a number// 10 minutes
+    let totalSeconds = parseInt(initialTotalSeconds) || 600;
     let timerInterval;
     let startTime = Date.now();
+    let violationCount = 0;
+    const maxViolations = 3;
+    let isSubmitted = false;
+    let isMonitoringViolations = true;
+    const STORAGE_KEY = `exam_state_${testId}_${"{{ session.email }}"}`;
 
     // DOM elements
     const questionText = document.getElementById('questionText');
@@ -565,19 +606,150 @@
     const questionPanel = document.getElementById('questionPanel');
     const navigationPanel = document.getElementById('navigationPanel');
 
-    // Timer function
+    // Full-screen management
+    function enterFullScreen() {
+        const elem = document.documentElement;
+        const fullscreenPromise = elem.requestFullscreen ? elem.requestFullscreen() :
+            elem.mozRequestFullScreen ? elem.mozRequestFullScreen() :
+            elem.webkitRequestFullscreen ? elem.webkitRequestFullscreen() :
+            elem.msRequestFullscreen ? elem.msRequestFullscreen() : Promise.reject('Fullscreen API not supported');
+        
+        fullscreenPromise.catch(err => {
+            console.error('Fullscreen request failed:', err);
+            const fullscreenModal = new bootstrap.Modal(document.getElementById('fullscreenPromptModal'), { backdrop: 'static', keyboard: false });
+            fullscreenModal.show();
+        });
+    }
+
+    function handleFullScreenChange() {
+        if (!document.fullscreenElement && !isSubmitted && isMonitoringViolations) {
+            enterFullScreen();
+            logViolation('Attempted to exit full-screen');
+        }
+    }
+
+    function exitFullScreen() {
+        if (document.exitFullscreen) {
+            document.exitFullscreen().catch(err => console.error('Exit fullscreen failed:', err));
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    }
+
+    // State management
+    function saveState() {
+        if (isSubmitted) return;
+        const state = {
+            currentQuestion,
+            questions: questions.map(q => ({
+                id: q.id,
+                selectedAnswer: q.selectedAnswer,
+                isMarkedForReview: q.isMarkedForReview,
+                isAttempted: q.isAttempted
+            })),
+            totalSeconds,
+            violationCount,
+            startTime
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        syncStateWithBackend(state);
+    }
+
+    async function syncStateWithBackend(state) {
+        try {
+            await fetch('/save_exam_state', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    test_id: testId,
+                    email: "{{ session.email }}",
+                    state
+                })
+            });
+        } catch (error) {
+            console.error('Error syncing state:', error);
+        }
+    }
+
+    async function loadState() {
+        try {
+            // Try to load from backend first
+            const response = await fetch(`/get_exam_state/${testId}/${"{{ session.email }}"}`);
+            const result = await response.json();
+            
+            if (result.success && result.state) {
+                restoreState(result.state);
+                return true;
+            }
+        } catch (error) {
+            console.error('Error loading state from backend:', error);
+        }
+
+        // Fallback to localStorage
+        const savedState = localStorage.getItem(STORAGE_KEY);
+        if (savedState) {
+            restoreState(JSON.parse(savedState));
+            return true;
+        }
+        return false;
+    }
+
+    function restoreState(state) {
+        if (state.currentQuestion >= 0 && state.currentQuestion < questions.length) {
+            currentQuestion = state.currentQuestion;
+        }
+        if (state.totalSeconds >= 0) {
+            totalSeconds = state.totalSeconds;
+            startTime = Date.now() - (parseInt(initialTotalSeconds) - state.totalSeconds) * 1000;
+        }
+        if (state.violationCount >= 0) {
+            violationCount = state.violationCount;
+        }
+        if (state.questions) {
+            questions.forEach((q, index) => {
+                const savedQ = state.questions.find(sq => sq.id === q.id);
+                if (savedQ) {
+                    q.selectedAnswer = savedQ.selectedAnswer;
+                    q.isMarkedForReview = savedQ.isMarkedForReview;
+                    q.isAttempted = savedQ.isAttempted;
+                }
+            });
+        }
+    }
+
+    function clearState() {
+        localStorage.removeItem(STORAGE_KEY);
+        fetch('/clear_exam_state', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                test_id: testId,
+                email: "{{ session.email }}"
+            })
+        }).catch(error => console.error('Error clearing state:', error));
+    }
+
     function updateTimer() {
         if (totalSeconds <= 0) {
             clearInterval(timerInterval);
             timerEl.textContent = "00:00";
+            isMonitoringViolations = false;
+            exitFullScreen();
             
-            // Direct submission without modal confirmation when time expires
             const modal = bootstrap.Modal.getInstance(document.getElementById('submitConfirmationModal'));
             if (modal) {
                 modal.hide();
             }
             
-            performAutoSubmission();  // Special function for auto-submission
+            performAutoSubmission();
             return;
         }
 
@@ -591,11 +763,13 @@
             : `${minutes}:${String(seconds).padStart(2, '0')}`;
         
         totalSeconds--;
+        saveState();
     }
-// Special function for auto-submission
+
     async function performAutoSubmission() {
-        // Clear the timer
         clearInterval(timerInterval);
+        isMonitoringViolations = false;
+        exitFullScreen();
         
         const timeElapsed = Date.now() - startTime;
         const minutes = Math.floor(timeElapsed / 60000);
@@ -605,7 +779,9 @@
         const answers = {};
         questions.forEach(q => {
             if (q.selectedAnswer !== null) {
-                answers[q.id] = String.fromCharCode(65 + q.selectedAnswer);
+                answers[q.id] = Array.isArray(q.selectedAnswer) 
+                    ? q.selectedAnswer.map(index => String.fromCharCode(65 + index)).join(',')
+                    : String.fromCharCode(65 + q.selectedAnswer);
             }
         });
         
@@ -638,9 +814,9 @@
             const result = await response.json();
             
             if (result.success) {
-                // Show the same success page as manual submission
+                isSubmitted = true;
+                clearState();
                 const resultHtml = `
-
                 <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
                     <div class="card border-0 shadow-lg" style="width: 100%; max-width: 520px;">
                         <div class="card-body p-5">
@@ -714,20 +890,15 @@
             console.error("Auto-submission error:", error);
             alert("Error submitting exam automatically. Please contact support.");
         }
-    }    
+    }
+
     function startTimer() {
-        // Clear any existing timer
         if (timerInterval) {
             clearInterval(timerInterval);
         }
         
-        // Ensure totalSeconds is a number
         totalSeconds = parseInt(totalSeconds);
-        
-        // Initial display
         updateTimer();
-        
-        // Start the countdown
         timerInterval = setInterval(updateTimer, 1000);
     }
 
@@ -742,10 +913,10 @@
     }
 
     async function performSubmission() {
-        // Clear the timer
         clearInterval(timerInterval);
+        isMonitoringViolations = false;
+        exitFullScreen();
         
-        // Hide modal if it exists
         const modal = bootstrap.Modal.getInstance(document.getElementById('submitConfirmationModal'));
         if (modal) {
             modal.hide();
@@ -758,12 +929,9 @@
         const answers = {};
         questions.forEach(q => {
             if (q.selectedAnswer !== null) {
-                // Handle both single and multi-select answers
                 if (Array.isArray(q.selectedAnswer)) {
-                    // For multi-select: convert array of indices to comma-separated letters (e.g., [0,2] -> "A,C")
                     answers[q.id] = q.selectedAnswer.map(index => String.fromCharCode(65 + index)).join(',');
                 } else {
-                    // For single-select: convert index to letter (e.g., 0 -> "A")
                     answers[q.id] = String.fromCharCode(65 + q.selectedAnswer);
                 }
             }
@@ -797,7 +965,8 @@
             const result = await response.json();
             
             if (result.success) {
-                // Enhanced results display with score information
+                isSubmitted = true;
+                clearState();
                 const resultHtml = `
                 <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
                     <div class="card border-0 shadow-lg" style="width: 100%; max-width: 520px;">
@@ -838,7 +1007,6 @@
                                             <td class="text-muted py-3 ps-4">Answered</td>
                                             <td class="fw-semibold py-3 pe-4">${questions.filter(q => q.selectedAnswer !== null).length}</td>
                                         </tr>
-
                                     </tbody>
                                 </table>
                             </div>
@@ -871,7 +1039,70 @@
         }
     }
 
-    // Fetch questions from backend
+    async function logViolation(violationType) {
+        if (!isMonitoringViolations) return;
+
+        violationCount++;
+        saveState();
+        const violationMessage = violationCount < maxViolations 
+            ? `Warning: ${violationType} detected! Violation ${violationCount} of ${maxViolations}.`
+            : `Exam Terminated: Maximum violations (${maxViolations}) reached due to ${violationType}.`;
+        
+        try {
+            const response = await fetch('/log_violation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    test_id: testId,
+                    email: "{{ session.email }}",
+                    violation: violationType,
+                    violation_count: violationCount
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                const violationModal = new bootstrap.Modal(document.getElementById('violationModal'));
+                document.getElementById('violationMessage').textContent = violationMessage;
+                document.getElementById('violationDetail').textContent = violationCount < maxViolations 
+                    ? 'Please adhere to exam rules to avoid termination.'
+                    : 'Your exam has been terminated due to excessive violations.';
+                violationModal.show();
+                
+                if (violationCount >= maxViolations) {
+                    isMonitoringViolations = false;
+                    exitFullScreen();
+                    document.querySelector('#violationModal .btn-primary').addEventListener('click', async () => {
+                        await performAutoSubmission();
+                    }, { once: true });
+                }
+            } else {
+                console.error("Error logging violation:", result.error);
+            }
+        } catch (error) {
+            console.error("Error logging violation:", error);
+        }
+    }
+
+    function setupViolationMonitoring() {
+        window.addEventListener('blur', () => {
+            if (isMonitoringViolations) {
+                logViolation('Window focus change');
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden' && isMonitoringViolations) {
+                logViolation('Tab change');
+            }
+        });
+
+        document.addEventListener('fullscreenchange', handleFullScreenChange);
+    }
+
     async function fetchQuestions() {
         try {
             questionText.textContent = "Loading questions...";
@@ -906,10 +1137,18 @@
                 throw new Error('No valid questions found after processing');
             }
             
+            // Load saved state after fetching questions
+            const stateLoaded = await loadState();
+            if (!stateLoaded) {
+                startTime = Date.now();
+                totalSeconds = parseInt(initialTotalSeconds) || 600;
+            }
+            
             renderQuestion();
             renderQuestionGrid();
             updateSummary();
             startTimer();
+            setupViolationMonitoring();
             
         } catch (error) {
             console.error("Error loading questions:", error);
@@ -923,7 +1162,6 @@
         }
     }
 
-    // Render current question
     function renderQuestion() {
         if (questions.length === 0) return;
         
@@ -931,7 +1169,6 @@
         questionHeader.textContent = `Q${currentQuestion + 1}`;
         questionText.textContent = q.question;
         
-        // Handle question image
         const imageContainer = document.getElementById('questionImageContainer');
         imageContainer.innerHTML = '';
         
@@ -961,7 +1198,6 @@
                 errorMsg.style.color = '#999';
                 errorMsg.style.fontStyle = 'italic';
                 imageContainer.appendChild(errorMsg);
-
                 questionPanel.classList.remove('has-image');
                 navigationPanel.classList.remove('tall');
             };
@@ -971,7 +1207,6 @@
             navigationPanel.classList.remove('tall');
         }
         
-// Inside renderQuestion() function
         optionsContainer.innerHTML = '';
         q.options.forEach((option, index) => {
             const optionDiv = document.createElement('div');
@@ -980,7 +1215,6 @@
                 (q.selectedAnswer === index ? 'selected' : '')}`;
             optionDiv.onclick = () => selectAnswer(index);
             
-            // Change input type based on question type
             const inputType = q.type === 'multi' ? 'checkbox' : 'radio';
             optionDiv.innerHTML = `
                 <input type="${inputType}" name="answer" 
@@ -994,78 +1228,74 @@
             optionsContainer.appendChild(optionDiv);
         });
 
-        // Update button states
         document.getElementById('prevBtn').disabled = currentQuestion === 0;
         document.getElementById('nextBtn').disabled = currentQuestion === questions.length - 1;
         document.getElementById('reviewBtn').textContent = 
             q.isMarkedForReview ? 'Unmark for Review' : 'Mark for Review';
         document.getElementById('reviewBtn').classList.toggle('marked', q.isMarkedForReview);
-        }
+    }
 
-    // Select answer
-        function selectAnswer(optionIndex) {
-            const currentQ = questions[currentQuestion];
-            
-            if (currentQ.type === 'multi') {
-                // For multi-select questions
-                if (!Array.isArray(currentQ.selectedAnswer)) {
-                    currentQ.selectedAnswer = [];
-                }
-                
-                const index = currentQ.selectedAnswer.indexOf(optionIndex);
-                if (index === -1) {
-                    currentQ.selectedAnswer.push(optionIndex);
-                } else {
-                    currentQ.selectedAnswer.splice(index, 1);
-                }
-            } else {
-                // For single-select questions (original behavior)
-                currentQ.selectedAnswer = optionIndex;
+    function selectAnswer(optionIndex) {
+        const currentQ = questions[currentQuestion];
+        
+        if (currentQ.type === 'multi') {
+            if (!Array.isArray(currentQ.selectedAnswer)) {
+                currentQ.selectedAnswer = [];
             }
             
-            currentQ.isAttempted = currentQ.type === 'multi' ? 
-                currentQ.selectedAnswer.length > 0 : 
-                currentQ.selectedAnswer !== null;
-            
-            renderQuestion();
-            renderQuestionGrid();
-            updateSummary();
+            const index = currentQ.selectedAnswer.indexOf(optionIndex);
+            if (index === -1) {
+                currentQ.selectedAnswer.push(optionIndex);
+            } else {
+                currentQ.selectedAnswer.splice(index, 1);
+            }
+        } else {
+            currentQ.selectedAnswer = optionIndex;
         }
+        
+        currentQ.isAttempted = currentQ.type === 'multi' ? 
+            currentQ.selectedAnswer.length > 0 : 
+            currentQ.selectedAnswer !== null;
+        
+        renderQuestion();
+        renderQuestionGrid();
+        updateSummary();
+        saveState();
+    }
 
-    // Mark for review
     function toggleReview() {
         questions[currentQuestion].isMarkedForReview = !questions[currentQuestion].isMarkedForReview;
         renderQuestion();
         renderQuestionGrid();
         updateSummary();
+        saveState();
     }
 
-    // Next question
     function nextQuestion() {
         if (currentQuestion < questions.length - 1) {
             currentQuestion++;
             renderQuestion();
             renderQuestionGrid();
+            saveState();
         }
     }
 
-    // Previous question
     function previousQuestion() {
         if (currentQuestion > 0) {
             currentQuestion--;
             renderQuestion();
             renderQuestionGrid();
+            saveState();
         }
     }
 
-    // Navigate to specific question
     function navigateToQuestion(questionIndex) {
         currentQuestion = questionIndex;
         renderQuestion();
         renderQuestionGrid();
+        saveState();
     }
 
-    // Render question grid
     function renderQuestionGrid() {
         questionGrid.innerHTML = '';
         
@@ -1078,7 +1308,6 @@
         });
     }
 
-    // Get question status
     function getQuestionStatus(question, index) {
         if (index === currentQuestion) return 'current';
         if (question.isMarkedForReview) return 'review';
@@ -1088,26 +1317,22 @@
         if (question.isAttempted) return 'attempted';
         return 'unattempted';
     }
-    // Update summary
+
     function updateSummary() {
         const unattempted = questions.filter(q => q.selectedAnswer === null && !q.isAttempted).length;
         const totalQuestions = questions.length;
         unattemptedCount.textContent = `${unattempted}/${totalQuestions}`;
     }
 
-    // Save answer to backend
     function saveAnswer(status = 'answered') {
         if (questions.length === 0) return;
         
         const q = questions[currentQuestion];
         let selectedAnswers;
         
-        // Handle both single and multi-select while maintaining original format
         if (q.type === 'multi' && Array.isArray(q.selectedAnswer)) {
-            // Convert array of indices to comma-separated letters (e.g., [0,2] -> "A,C")
             selectedAnswers = q.selectedAnswer.map(index => String.fromCharCode(65 + index)).join(',');
         } else if (q.selectedAnswer !== null) {
-            // Original format for single-select (just the letter)
             selectedAnswers = String.fromCharCode(65 + q.selectedAnswer);
         } else {
             selectedAnswers = '';
@@ -1116,7 +1341,7 @@
         const data = {
             test_id: testId,
             qid: q.id,
-            selected_answers: selectedAnswers, // Now compatible with both types
+            selected_answers: selectedAnswers,
             status: status
         };
         
@@ -1128,7 +1353,6 @@
             body: JSON.stringify(data)
         }).catch(error => console.error('Error saving answer:', error));
     }
-
 
     // Event listeners
     document.getElementById('prevBtn').addEventListener('click', () => {
@@ -1144,9 +1368,19 @@
     document.getElementById('reviewBtn').addEventListener('click', toggleReview);
     document.getElementById('submitBtn').addEventListener('click', showSubmitConfirmation);
     document.getElementById('confirmSubmitBtn').addEventListener('click', performSubmission);
+    document.getElementById('enterFullscreenBtn').addEventListener('click', () => {
+        enterFullScreen();
+        const fullscreenModal = bootstrap.Modal.getInstance(document.getElementById('fullscreenPromptModal'));
+        if (fullscreenModal) {
+            fullscreenModal.hide();
+        }
+    });
 
     // Initialize
-    fetchQuestions();
+    document.addEventListener('DOMContentLoaded', () => {
+        enterFullScreen();
+        fetchQuestions();
+    });
 </script>
 </body>
 </html>
