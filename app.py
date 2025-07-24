@@ -11,7 +11,8 @@ from threading import Lock, Timer
 import random
 import logging
 import time
-import pandas as pd
+from openpyxl import Workbook
+
 from io import BytesIO
 
 # Configure logger
@@ -152,6 +153,9 @@ def login():
 
 @app.route('/admin_dashboard', methods=['GET', 'POST'])
 @login_required
+
+
+@app.route('/admin_dashboard', methods=['GET', 'POST'])
 def admin_dashboard():
     if session.get('role') != 'admin':
         flash("⚠️ Unauthorized access. Admins only.", "danger")
@@ -178,17 +182,18 @@ def admin_dashboard():
             for row in leaderboard_data
         ]
 
+        # Handle POST request (update instructions)
         if request.method == 'POST':
             new_instructions = request.form.getlist('instructions')
             new_instructions = [instr.strip() for instr in new_instructions if instr.strip()]
-            
+
             @retry_on_quota_exceeded
             def update_instructions():
                 spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
                 instructions_sheet = spreadsheet.worksheet("Instructions")
                 instructions_sheet.clear()
                 instructions_sheet.update('A1:A' + str(len(new_instructions)), [[instr] for instr in new_instructions])
-            
+
             try:
                 update_instructions()
                 flash("✅ Instructions updated successfully", "success")
@@ -197,12 +202,24 @@ def admin_dashboard():
                 logger.error(f"Error updating instructions: {str(e)}")
                 flash(f"❌ Error updating instructions: {str(e)}", "danger")
 
+        # Handle Excel Download
         if request.args.get('download') == 'excel':
-            df = pd.DataFrame(leaderboard)
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Leaderboard"
+
+            # Write headers
+            ws.append(['Name', 'Score', 'Rank'])
+
+            # Write rows
+            for entry in leaderboard:
+                ws.append([entry['name'], entry['score'], entry['rank']])
+
+            # Prepare in-memory file
             output = BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                df.to_excel(writer, sheet_name='Leaderboard', index=False)
+            wb.save(output)
             output.seek(0)
+
             return send_file(
                 output,
                 download_name='leaderboard.xlsx',
