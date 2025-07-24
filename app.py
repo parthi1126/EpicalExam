@@ -153,9 +153,6 @@ def login():
 
 @app.route('/admin_dashboard', methods=['GET', 'POST'])
 @login_required
-
-
-@app.route('/admin_dashboard', methods=['GET', 'POST'])
 def admin_dashboard():
     if session.get('role') != 'admin':
         flash("⚠️ Unauthorized access. Admins only.", "danger")
