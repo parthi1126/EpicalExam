@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa, #e8f5e9); /* Subtle green gradient */
+            font-family: 'Open Sans', 'Helvetica Neue', sans-serif;
+            color: #2e7d32; /* Forest green text */
+            min-height: 100vh;
+            padding-bottom: 20px;
+        }
+        .container {
+            max-width: 1350px;
+            margin-top: 40px;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e0f2e9; /* Light green border */
+        }
+        h1, h2, h3 {
+            color: #1b5e20; /* Deep green for headings */
+            font-weight: 600;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            background: #ffffff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.2s ease;
+        }
+        .card:hover {
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            background: #4caf50; /* Green header */
+            color: #ffffff;
+            font-weight: 500;
+            border-bottom: 1px solid #388e3c;
+            padding: 15px;
+        }
+        .table {
+            color: #2e7d32;
+            background: #ffffff;
+            border-radius: 8px;
+        }
+        .table thead th {
+            background: #66bb6a; /* Light green header */
+            color: #ffffff;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            border-bottom: 2px solid #4caf50;
+        }
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f1f8e9; /* Very light green */
+        }
+        .btn-primary {
+            background-color: #4caf50;
+            border-color: #388e3c;
+            color: #ffffff;
+            font-weight: 500;
+        }
+        .btn-primary:hover {
+            background-color: #388e3c;
+            border-color: #2e7d32;
+        }
+        .btn-success {
+            background-color: #66bb6a;
+            border-color: #4caf50;
+            color: #ffffff;
+        }
+        .btn-success:hover {
+            background-color: #43a047;
+            border-color: #388e3c;
+        }
+        .btn-danger {
+            background-color: #d32f2f;
+            border-color: #c62828;
+            color: #ffffff;
+        }
+        .btn-danger:hover {
+            background-color: #c62828;
+            border-color: #b71c1c;
+        }
+        .btn-download {
+            margin-bottom: 20px;
+        }
+        .instructions-form {
+            margin-top: 30px;
+        }
+        .instruction-input {
+            margin-bottom: 15px;
+        }
+        .instruction-input .form-control {
+            border-color: #a5d6a7;
+            border-radius: 6px;
+            background-color: #f9fbfa;
+        }
+        .instruction-input .form-control:focus {
+            border-color: #66bb6a;
+            box-shadow: 0 0 6px rgba(102, 187, 106, 0.3);
+        }
+        .alert {
+            margin-bottom: 20px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        .alert-success {
+            background-color: #e8f5e9;
+            border-color: #66bb6a;
+            color: #1b5e20;
+        }
+        .alert-danger {
+            background-color: #ffebee;
+            border-color: #ef5350;
+            color: #b71c1c;
+        }
+        .table-responsive {
+            max-height: 450px;
+            overflow-y: auto;
+            display: block;
+        }
+        .table-responsive::-webkit-scrollbar {
+            width: 8px;
+        }
+        .table-responsive::-webkit-scrollbar-track {
+            background: #f1f8e9;
+            border-radius: 4px;
+        }
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: #66bb6a;
+            border-radius: 4px;
+        }
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">📊 Admin Dashboard</h1>
+        <h3 class="text-center mb-4">Welcome, {{ fullname }}</h3>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'danger' else 'warning' }}" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Leaderboard Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2>🏆 Leaderboard</h2>
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('admin_dashboard', download='excel') }}" class="btn btn-primary btn-download">
+                    <i class="fas fa-download"></i> Download as Excel
+                </a>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Name</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in leaderboard %}
+                                <tr>
+                                    <td>{{ entry.rank }}</td>
+                                    <td>{{ entry.name }}</td>
+                                    <td>{{ entry.score }}</td>
+                                </tr>
+                            {% endfor %}
+                            {% if not leaderboard %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No leaderboard data available</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions Section -->
+        <div class="card">
+            <div class="card-header">
+                <h2>📝 Edit Instructions</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" class="instructions-form">
+                    {% for instruction in instructions %}
+                        <div class="input-group instruction-input">
+                            <input type="text" class="form-control" name="instructions" value="{{ instruction }}">
+                        </div>
+                    {% endfor %}
+                    <div class="input-group instruction-input">
+                        <input type="text" class="form-control" name="instructions" placeholder="Add new instruction">
+                    </div>
+                    <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Save Instructions</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Logout Button -->
+        <div class="text-center mt-5">
+            <a href="{{ url_for('logout') }}" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
