@@ -184,23 +184,7 @@ def submit_exam():
         if not test_id or not email:
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
-        # Clear IsActive flag
-        all_data = login_sheet.get_all_values()
-        headers = [h.strip() for h in all_data[0]]
-        if 'IsActive' not in headers:
-            login_sheet.update_cell(1, len(headers) + 1, 'IsActive')
-            headers.append('IsActive')
-            all_data = login_sheet.get_all_values()
-        
-        email_col = headers.index('EmployeeMailId') + 1
-        is_active_col = headers.index('IsActive') + 1
-        user_row = None
-        for idx, row in enumerate(all_data[1:], start=2):
-            if row[email_col - 1].strip().lower() == email:
-                user_row = idx
-                break
-        if user_row:
-            login_sheet.update_cell(user_row, is_active_col, 'False')
+
 
         worksheet_name = f"Questions_TEST{test_id}"
         q_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet(worksheet_name)
