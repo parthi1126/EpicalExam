@@ -89,7 +89,6 @@ def login():
         password = request.form.get('password', '').strip()
 
         try:
-            # Get all data with retry mechanism
             @retry_on_quota_exceeded()
             def get_all_data():
                 return login_sheet.get_all_values()
@@ -150,6 +149,7 @@ def login():
             return redirect(url_for('login'))
 
     return render_template('login.html')
+
 @app.route('/admin_dashboard', methods=['GET', 'POST'])
 @login_required
 def admin_dashboard():
@@ -158,7 +158,7 @@ def admin_dashboard():
         return redirect(url_for('login'))
 
     try:
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def get_admin_data():
             spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
             leaderboard_sheet = spreadsheet.worksheet("LiveLeaderboard")
@@ -183,7 +183,7 @@ def admin_dashboard():
             new_instructions = request.form.getlist('instructions')
             new_instructions = [instr.strip() for instr in new_instructions if instr.strip()]
 
-            @retry_on_quota_exceeded
+            @retry_on_quota_exceeded()
             def update_instructions():
                 spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
                 instructions_sheet = spreadsheet.worksheet("Instructions")
@@ -203,7 +203,7 @@ def admin_dashboard():
             wb = Workbook()
             ws = wb.active
             ws.title = "Leaderboard"
-
+ 
             # Write headers
             ws.append(['Name', 'Score', 'Rank'])
 
@@ -244,7 +244,7 @@ def admin_dashboard():
 @login_required
 def instructions():
     try:
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def get_spreadsheet_data():
             spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
             instructions_sheet = spreadsheet.worksheet("Instructions")
@@ -272,7 +272,7 @@ def instructions():
 @login_required
 def exam():
     try:
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def get_time_data():
             time_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet("TIME")
             return time_sheet.get_all_records()
@@ -310,7 +310,7 @@ def exam():
 @login_required
 def get_questions(test_id):
     try:
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def get_questions_data():
             worksheet_name = f"Questions_TEST{test_id}"
             q_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet(worksheet_name)
@@ -339,7 +339,7 @@ def submit_exam():
         if not test_id or not email:
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def get_questions_and_results():
             worksheet_name = f"Questions_TEST{test_id}"
             q_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet(worksheet_name)
@@ -384,7 +384,7 @@ def submit_exam():
         score = correct
         percentage = (correct / total) * 100 if total > 0 else 0
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def append_results():
             results_sheet.append_row([
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -423,7 +423,7 @@ def submit_answer():
         selected_answers = data.get('selected_answers', '')
         status = data.get('status', 'answered')
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def manage_answers_sheet():
             spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
             try:
@@ -441,7 +441,7 @@ def submit_answer():
         
         answers_sheet = manage_answers_sheet()
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def append_answer():
             answers_sheet.append_row([
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -473,7 +473,7 @@ def log_violation():
         if not all([test_id, email, violation, violation_count]):
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def manage_violations_sheet():
             spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
             try:
@@ -492,7 +492,7 @@ def log_violation():
         
         violations_sheet = manage_violations_sheet()
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def append_violation():
             violations_sheet.append_row([
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -524,7 +524,7 @@ def save_exam_state():
         if not all([test_id, email, state]):
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def manage_state_sheet():
             spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
             try:
@@ -545,7 +545,7 @@ def save_exam_state():
         import json
         questions_json = json.dumps(state.get('questions', []))
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def get_state_data():
             return state_sheet.get_all_values()
         
@@ -567,7 +567,7 @@ def save_exam_state():
             str(state.get('violationCount', 0))
         ]
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def update_state():
             if user_row:
                 state_sheet.update(f"A{user_row}:F{user_row}", [row_data])
@@ -590,7 +590,7 @@ def get_exam_state(test_id, email):
         if email != session.get('email'):
             return jsonify({'success': False, 'error': 'Unauthorized access'}), 403
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def get_state_sheet():
             spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
             try:
@@ -602,7 +602,7 @@ def get_exam_state(test_id, email):
         if not state_sheet:
             return jsonify({'success': False, 'error': 'No state found'}), 404
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def get_state_data():
             return state_sheet.get_all_values()
         
@@ -640,7 +640,7 @@ def clear_exam_state():
         if not all([test_id, email]):
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def get_state_sheet():
             spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
             try:
@@ -652,7 +652,7 @@ def clear_exam_state():
         if not state_sheet:
             return jsonify({'success': True})  # No state to clear
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def get_state_data():
             return state_sheet.get_all_values()
         
@@ -666,7 +666,7 @@ def clear_exam_state():
                 break
         
         if user_row:
-            @retry_on_quota_exceeded
+            @retry_on_quota_exceeded()
             def delete_row():
                 state_sheet.delete_rows(user_row)
             delete_row()
@@ -691,7 +691,7 @@ def clear_session():
         if not email:
             return jsonify({'success': False, 'error': 'Missing email'}), 400
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def get_login_data():
             return login_sheet.get_all_values()
         
@@ -709,7 +709,7 @@ def clear_session():
                 break
         
         if user_row:
-            @retry_on_quota_exceeded
+            @retry_on_quota_exceeded()
             def clear_is_active():
                 login_sheet.update_cell(user_row, is_active_col, 'False')
             clear_is_active()
@@ -727,7 +727,7 @@ def logout():
     try:
         email = session.get('email')
         
-        @retry_on_quota_exceeded
+        @retry_on_quota_exceeded()
         def get_login_data():
             return login_sheet.get_all_values()
         
@@ -742,7 +742,7 @@ def logout():
                     user_row = idx
                     break
             if user_row:
-                @retry_on_quota_exceeded
+                @retry_on_quota_exceeded()
                 def clear_is_active():
                     login_sheet.update_cell(user_row, is_active_col, 'False')
                 clear_is_active()
