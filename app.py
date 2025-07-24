@@ -1,33 +1,43 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 from functools import wraps
 from datetime import datetime
 import os
 import json
 import base64
 
-
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default-secret-key')
+# Set a secret key for Flask sessions
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-default-secret')
 
 # Constants
 SPREADSHEET_ID = "1hyoQZpD17tsTjSh1XqgAUvfZ4Nt3kwV7zxphosruXeE"
-GOOGLE_SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+GOOGLE_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 
-# Load and decode base64-encoded service account JSON from env
-encoded = os.getenv("GOOGLE_CREDENTIALS_JSON")
-if not encoded:
-    raise ValueError("Missing GOOGLE_CREDENTIALS_JSON environment variable")
+# Load base64-encoded service account JSON key from environment variable
+encoded_key = os.getenv("GOOGLE_CREDENTIALS_JSON")
+if not encoded_key:
+    raise ValueError("GOOGLE_CREDENTIALS_JSON environment variable not set")
 
-decoded = base64.b64decode(encoded).decode("utf-8")
-creds_dict = json.loads(decoded)
-google_creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, GOOGLE_SCOPE)
-gspread_client = gspread.authorize(google_creds)
+try:
+    decoded_json = base64.b64decode(encoded_key).decode("utf-8")
+    creds_info = json.loads(decoded_json)
+    credentials = Credentials.from_service_account_info(creds_info, scopes=GOOGLE_SCOPES)
+    gspread_client = gspread.authorize(credentials)
+except Exception as e:
+    raise RuntimeError(f"Error loading Google credentials: {str(e)}")
 
-# Access the USER worksheet
-login_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet("USER")
+# Open the spreadsheet and worksheet
+try:
+    sheet = gspread_client.open_by_key(SPREADSHEET_ID)
+    login_sheet = sheet.worksheet("USER")
+except Exception as e:
+    raise RuntimeError(f"Failed to access Google Sheet: {str(e)}")
 
 
 # Decorator
