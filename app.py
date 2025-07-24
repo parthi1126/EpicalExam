@@ -43,46 +43,51 @@ except Exception as e:
     raise RuntimeError(f"Failed to access Google Sheet: {str(e)}")
 # ---- Batching Control Logic ----
 
-MAX_BATCH_SIZE = 50  # Maximum 50 concurrent API users per minute
-BATCH_WINDOW = 60    # Time window in seconds
+from threading import Lock, Timer
+import time
+
+MAX_BATCH_SIZE = 50         # Maximum 50 users per minute
+BATCH_WINDOW = 60           # Time window in seconds
 
 batch_lock = Lock()
 active_users = set()
-user_timers = {}  # Maps user_id to timer
-
-def allow_user(user_id):
-    """Check if user is allowed to proceed or should wait."""
-    with batch_lock:
-        if user_id in active_users:
-            return True
-        if len(active_users) < MAX_BATCH_SIZE:
-            active_users.add(user_id)
-            # Auto-remove after BATCH_WINDOW
-            if user_id in user_timers:
-                user_timers[user_id].cancel()
-            timer = Timer(BATCH_WINDOW, remove_user_from_batch, [user_id])
-            timer.start()
-            user_timers[user_id] = timer
-            return True
-        else:
-            return False
+user_timers = {}            # Maps user_id to Timer
+user_timestamps = {}        # Maps user_id to timestamp
 
 def remove_user_from_batch(user_id):
     with batch_lock:
         active_users.discard(user_id)
-        if user_id in user_timers:
-            del user_timers[user_id]
+        user_timers.pop(user_id, None)
+        user_timestamps.pop(user_id, None)
 
-# ---- Caching Layer (for read/write results) ----
+def allow_user(user_id):
+    """Check if user is allowed to proceed or should wait. Returns (allowed: bool, wait_time: int)"""
+    with batch_lock:
+        current_time = time.time()
+        
+        # If user is already active, extend their window
+        if user_id in active_users:
+            # Update timestamp and restart timer
+            user_timestamps[user_id] = current_time
+            if user_id in user_timers:
+                user_timers[user_id].cancel()
+            user_timers[user_id] = Timer(BATCH_WINDOW, remove_user_from_batch, [user_id])
+            user_timers[user_id].start()
+            return True, 0
 
-cache = TTLCache(maxsize=1000, ttl=60)  # Cache stores data per user for 60 seconds
+        # If we have capacity, add user
+        if len(active_users) < MAX_BATCH_SIZE:
+            active_users.add(user_id)
+            user_timestamps[user_id] = current_time
+            timer = Timer(BATCH_WINDOW, remove_user_from_batch, [user_id])
+            timer.start()
+            user_timers[user_id] = timer
+            return True, 0
 
-def get_cached_data(key):
-    return cache.get(key)
-
-def set_cached_data(key, value):
-    cache[key] = value
-
+        # Calculate wait time based on oldest user's remaining time
+        oldest_user_time = min(user_timestamps.values())
+        wait_time = max(1, int(BATCH_WINDOW - (current_time - oldest_user_time)))
+        return False, wait_time # Cache stores data per user for 60 seconds
 
 
 # Decorator
@@ -101,61 +106,57 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '').strip()
+        session_id = f"{request.remote_addr}-{email}"
 
-        # Generate a unique session_id based on IP + email
-        session_id = request.remote_addr + "-" + email
-
-        # Check rate limiting for this user
+        # Rate limiting check
         allowed, wait_time = allow_user(session_id)
         if not allowed:
             flash(f"⏳ Too many users logging in. Please wait {wait_time} seconds and try again.", "warning")
             return redirect(url_for('login'))
 
-        # Get data from sheet
-        all_data = login_sheet.get_all_values()
-        headers = [h.strip() for h in all_data[0]]
-        users = [dict(zip(headers, row)) for row in all_data[1:]]
-
-        # Ensure 'IsActive' column exists
-        if 'IsActive' not in headers:
-            login_sheet.update_cell(1, len(headers) + 1, 'IsActive')
-            headers.append('IsActive')
-            all_data = login_sheet.get_all_values()
-            users = [dict(zip(headers, row)) for row in all_data[1:]]
-
-        user_row = None
-        user_idx = None
-        for idx, user in enumerate(users, start=2):
-            sheet_email = user.get('EmployeeMailId', '').strip().lower()
-            if email == sheet_email:
-                if user.get('IsActive', '').lower() == 'true':
-                    flash("⚠️ You are already logged in for an exam. Please complete or logout from your active session.", "danger")
-                    return redirect(url_for('login'))
-                if password == user.get('Password', '').strip():
-                    user_row = user
-                    user_idx = idx
-                    break
-        else:
-            flash('Email not found', 'danger')
-            return redirect(url_for('login'))
-
-        if not user_row:
-            flash('Incorrect password', 'danger')
-            return redirect(url_for('login'))
-
-        # Set IsActive to True
         try:
-            login_sheet.update_cell(user_idx, headers.index('IsActive') + 1, 'True')
+            # Get user data in single batch
+            all_data = login_sheet.get_all_values()
+            headers = [h.strip() for h in all_data[0]]
+            
+            # Ensure IsActive column exists
+            if 'IsActive' not in headers:
+                login_sheet.update_cell(1, len(headers) + 1, 'IsActive')
+                headers.append('IsActive')
+                all_data = login_sheet.get_all_values()
+
+            # Find user
+            user_found = False
+            for idx, row in enumerate(all_data[1:], start=2):
+                user = dict(zip(headers, row))
+                if email == user.get('EmployeeMailId', '').strip().lower():
+                    user_found = True
+                    if user.get('IsActive', '').lower() == 'true':
+                        flash("⚠️ You are already logged in for an exam.", "danger")
+                        return redirect(url_for('login'))
+                    if password == user.get('Password', '').strip():
+                        # Update active status
+                        login_sheet.update_cell(idx, headers.index('IsActive') + 1, 'True')
+                        
+                        # Set session
+                        session.update({
+                            'logged_in': True,
+                            'email': email,
+                            'fullname': user.get('FullName', ''),
+                            'role': user.get('Role', '').lower()
+                        })
+                        return redirect(url_for('admin_dashboard' if session['role'] == 'admin' else 'instructions'))
+                    break
+
+            if not user_found:
+                flash('Email not found', 'danger')
+            else:
+                flash('Incorrect password', 'danger')
+                
         except Exception as e:
-            flash(f"Error setting active session: {str(e)}", "danger")
-            return redirect(url_for('login'))
-
-        session['logged_in'] = True
-        session['email'] = email
-        session['fullname'] = user_row.get('FullName', '')
-        session['role'] = user_row.get('Role', '').lower()
-
-        return redirect(url_for('admin_dashboard' if session['role'] == 'admin' else 'instructions'))
+            flash(f"Login error: {str(e)}", "danger")
+            
+        return redirect(url_for('login'))
 
     return render_template('login.html')
 
@@ -319,44 +320,87 @@ def submit_exam():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/submit_answer', methods=['POST'])
+def check_answer(question, user_answer):
+    """Helper function to check answer correctness"""
+    if not user_answer:
+        return False
+        
+    q_type = question.get('Type', 'single').lower()
+    correct_answer = question['Answer'].strip().upper()
+    user_answer = user_answer.strip().upper()
+    
+    if q_type == 'multi':
+        correct_set = set(a.strip() for a in correct_answer.split(','))
+        user_set = set(a.strip() for a in user_answer.split(','))
+        return correct_set == user_set
+    else:
+        return user_answer == correct_answer
+
+@app.route('/submit_exam', methods=['POST'])
 @login_required
-def submit_answer():
+def submit_exam():
     try:
-        # Apply batch control for quota limits
-        session_id = request.remote_addr + "-" + session.get('email', 'unknown')
+        # Rate limiting
+        session_id = f"{request.remote_addr}-{session.get('email', 'unknown')}"
         allowed, wait_time = allow_user(session_id)
         if not allowed:
-            return jsonify({'success': False, 'error': f'⏳ Please wait {wait_time} seconds to submit answers due to usage limits.'}), 429
+            return jsonify({'success': False, 'error': f'⚠️ Please wait {wait_time} seconds.'}), 429
 
         data = request.get_json()
         test_id = data.get('test_id')
-        qid = data.get('qid')
-        selected_answers = data.get('selected_answers', '')
-        status = data.get('status', 'answered')
+        email = session.get('email')
+        time_taken = data.get('time_taken')
 
+        if not test_id or not email:
+            return jsonify({'success': False, 'error': 'Missing data'}), 400
+
+        # Get questions and calculate score
+        q_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet(f"Questions_TEST{test_id}")
+        questions = q_sheet.get_all_records(head=1)
+        answers = data.get('answers', {})
+        
+        correct = sum(1 for q in questions 
+                     if check_answer(q, answers.get(str(q['QID']), '')))
+        total = len(questions)
+        percentage = (correct / total * 100) if total > 0 else 0
+
+        # Prepare results data
+        result_data = [
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            email,
+            session.get('fullname'),
+            correct,
+            correct,
+            total,
+            f"{percentage:.2f}%",
+            time_taken
+        ]
+
+        # Write results
         spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
         try:
-            answers_sheet = spreadsheet.worksheet(f"Answers_TEST{test_id}")
+            results_sheet = spreadsheet.worksheet(f"Results_TEST{test_id}")
+            headers = results_sheet.row_values(1)
+            if "TimeTaken" not in headers:
+                results_sheet.append_row(["TimeTaken"], col=len(headers) + 1)
         except gspread.exceptions.WorksheetNotFound:
-            answers_sheet = spreadsheet.add_worksheet(
-                title=f"Answers_TEST{test_id}",
-                rows=100,
-                cols=6
-            )
-            answers_sheet.append_row([
-                "Timestamp", "Email", "QID", "SelectedAnswers", "Status"
+            results_sheet = spreadsheet.add_worksheet(
+                title=f"Results_TEST{test_id}", rows=100, cols=11)
+            results_sheet.append_row([
+                "Timestamp", "Email", "FullName", "Score",
+                "Correct", "Total", "Percentage", "TimeTaken"
             ])
 
-        answers_sheet.append_row([
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            session.get('email'),
-            qid,
-            selected_answers,
-            status
-        ])
+        results_sheet.append_row(result_data)
 
-        return jsonify({'success': True})
+        return jsonify({
+            'success': True,
+            'score': correct,
+            'correct': correct,
+            'total': total,
+            'percentage': f"{percentage:.2f}%",
+            'timestamp': result_data[0]
+        })
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
