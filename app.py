@@ -537,6 +537,26 @@ def log_violation():
             'success': False,
             'error': str(e)
         }), 500
+# In your routes, combine operations where possible
+@app.route('/get_combined_data')
+@login_required
+def get_combined_data():
+    try:
+        @retry_on_quota_exceeded()
+        def get_data():
+            spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
+            # Get all needed worksheets in one API call
+            batch = spreadsheet.batch_get(['Instructions!A:A', 'TIME!A1:B2'])
+            return {
+                'instructions': batch[0],
+                'time_data': batch[1]
+            }
+        
+        data = get_data()
+        return jsonify(data)
+    except Exception as e:
+        logger.error(f"Error getting combined data: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 @app.route('/save_exam_state', methods=['POST'])
 @login_required
 def save_exam_state():
