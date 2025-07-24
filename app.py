@@ -465,53 +465,78 @@ def submit_answer():
 def log_violation():
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+            
         test_id = data.get('test_id')
         email = session.get('email')
-        violation = data.get('violation')
-        violation_count = data.get('violation_count')
+        violation_type = data.get('violation_type')
+        violation_count = data.get('violation_count', 0)
         
-        if not all([test_id, email, violation, violation_count]):
-            return jsonify({'success': False, 'error': 'Missing data'}), 400
-        
+        if not all([test_id, email, violation_type]):
+            return jsonify({
+                'success': False, 
+                'error': 'Missing required fields: test_id, email, or violation_type'
+            }), 400
+
+        # Determine action based on violation count
+        action_taken = "Warning"
+        if int(violation_count) >= 3:
+            action_taken = "Exam Terminated"
+
         @retry_on_quota_exceeded()
         def manage_violations_sheet():
-            spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
             try:
-                violations_sheet = spreadsheet.worksheet(f"Violations_TEST{test_id}")
-            except gspread.exceptions.WorksheetNotFound:
-                violations_sheet = spreadsheet.add_worksheet(
-                    title=f"Violations_TEST{test_id}", 
-                    rows=100, 
-                    cols=6
-                )
-                violations_sheet.append_row([
-                    "Timestamp", "Email", "FullName", "Violation", 
-                    "ViolationCount", "ActionTaken"
-                ])
-            return violations_sheet
-        
+                spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
+                try:
+                    violations_sheet = spreadsheet.worksheet(f"Violations_TEST{test_id}")
+                except gspread.exceptions.WorksheetNotFound:
+                    # Create new worksheet if it doesn't exist
+                    violations_sheet = spreadsheet.add_worksheet(
+                        title=f"Violations_TEST{test_id}", 
+                        rows=100, 
+                        cols=7
+                    )
+                    # Add headers
+                    violations_sheet.append_row([
+                        "Timestamp", "Email", "FullName", "ViolationType",
+                        "ViolationCount", "ActionTaken", "Details"
+                    ])
+                return violations_sheet
+            except Exception as e:
+                logger.error(f"Error accessing violations sheet: {str(e)}")
+                raise
+
         violations_sheet = manage_violations_sheet()
-        
+
         @retry_on_quota_exceeded()
-        def append_violation():
+        def log_violation_entry():
             violations_sheet.append_row([
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 email,
-                session.get('fullname'),
-                violation,
-                violation_count,
-                "Warning" if violation_count < 3 else "Exam Terminated"
+                session.get('fullname', ''),
+                violation_type,
+                str(violation_count),
+                action_taken,
+                json.dumps(data.get('details', {}))
             ])
-        
-        append_violation()
-        
-        logger.info(f"Violation logged for {email}, test {test_id}: {violation}")
-        return jsonify({'success': True})
-        
-    except Exception as e:
-        logger.error(f"Error logging violation for {email}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
 
+        log_violation_entry()
+
+        logger.info(f"Violation logged - Test: {test_id}, User: {email}, Type: {violation_type}, Count: {violation_count}")
+        
+        return jsonify({
+            'success': True,
+            'action_taken': action_taken,
+            'violation_count': violation_count
+        })
+
+    except Exception as e:
+        logger.error(f"Error logging violation: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 @app.route('/save_exam_state', methods=['POST'])
 @login_required
 def save_exam_state():
