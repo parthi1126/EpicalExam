@@ -12,7 +12,6 @@ import random
 import logging
 import time
 from openpyxl import Workbook
-
 from io import BytesIO
 
 # Configure logger
@@ -89,17 +88,18 @@ def login():
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '').strip()
 
-        @retry_on_quota_exceeded
-        def get_all_data():
-            return login_sheet.get_all_values()
-
         try:
+            # Get all data with retry mechanism
+            @retry_on_quota_exceeded()
+            def get_all_data():
+                return login_sheet.get_all_values()
+            
             all_data = get_all_data()
             headers = [h.strip() for h in all_data[0]]
             users = [dict(zip(headers, row)) for row in all_data[1:]]
 
             if 'IsActive' not in headers:
-                @retry_on_quota_exceeded
+                @retry_on_quota_exceeded()
                 def update_is_active_column():
                     login_sheet.update_cell(1, len(headers) + 1, 'IsActive')
                 update_is_active_column()
@@ -128,7 +128,7 @@ def login():
                 return redirect(url_for('login'))
 
             try:
-                @retry_on_quota_exceeded
+                @retry_on_quota_exceeded()
                 def set_is_active():
                     login_sheet.update_cell(user_idx, headers.index('IsActive') + 1, 'True')
                 set_is_active()
@@ -150,7 +150,6 @@ def login():
             return redirect(url_for('login'))
 
     return render_template('login.html')
-
 @app.route('/admin_dashboard', methods=['GET', 'POST'])
 @login_required
 def admin_dashboard():
