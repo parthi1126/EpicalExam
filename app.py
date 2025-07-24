@@ -6,6 +6,9 @@ from datetime import datetime
 import os
 import json
 import base64
+from cachetools import TTLCache
+from threading import Lock, Timer
+import random
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
@@ -38,6 +41,48 @@ try:
     login_sheet = sheet.worksheet("USER")
 except Exception as e:
     raise RuntimeError(f"Failed to access Google Sheet: {str(e)}")
+# ---- Batching Control Logic ----
+
+MAX_BATCH_SIZE = 50  # Maximum 50 concurrent API users per minute
+BATCH_WINDOW = 60    # Time window in seconds
+
+batch_lock = Lock()
+active_users = set()
+user_timers = {}  # Maps user_id to timer
+
+def allow_user(user_id):
+    """Check if user is allowed to proceed or should wait."""
+    with batch_lock:
+        if user_id in active_users:
+            return True
+        if len(active_users) < MAX_BATCH_SIZE:
+            active_users.add(user_id)
+            # Auto-remove after BATCH_WINDOW
+            if user_id in user_timers:
+                user_timers[user_id].cancel()
+            timer = Timer(BATCH_WINDOW, remove_user_from_batch, [user_id])
+            timer.start()
+            user_timers[user_id] = timer
+            return True
+        else:
+            return False
+
+def remove_user_from_batch(user_id):
+    with batch_lock:
+        active_users.discard(user_id)
+        if user_id in user_timers:
+            del user_timers[user_id]
+
+# ---- Caching Layer (for read/write results) ----
+
+cache = TTLCache(maxsize=1000, ttl=60)  # Cache stores data per user for 60 seconds
+
+def get_cached_data(key):
+    return cache.get(key)
+
+def set_cached_data(key, value):
+    cache[key] = value
+
 
 
 # Decorator
@@ -57,12 +102,21 @@ def login():
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '').strip()
 
-        # Get data with proper header handling
+        # Generate a unique session_id based on IP + email
+        session_id = request.remote_addr + "-" + email
+
+        # Check rate limiting for this user
+        allowed, wait_time = allow_user(session_id)
+        if not allowed:
+            flash(f"⏳ Too many users logging in. Please wait {wait_time} seconds and try again.", "warning")
+            return redirect(url_for('login'))
+
+        # Get data from sheet
         all_data = login_sheet.get_all_values()
         headers = [h.strip() for h in all_data[0]]
         users = [dict(zip(headers, row)) for row in all_data[1:]]
 
-        # Ensure IsActive column exists
+        # Ensure 'IsActive' column exists
         if 'IsActive' not in headers:
             login_sheet.update_cell(1, len(headers) + 1, 'IsActive')
             headers.append('IsActive')
@@ -100,9 +154,11 @@ def login():
         session['email'] = email
         session['fullname'] = user_row.get('FullName', '')
         session['role'] = user_row.get('Role', '').lower()
+
         return redirect(url_for('admin_dashboard' if session['role'] == 'admin' else 'instructions'))
 
     return render_template('login.html')
+
 
 @app.route('/admin_dashboard')
 @login_required
@@ -181,32 +237,35 @@ def get_questions(test_id):
         return jsonify(questions)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 @app.route('/submit_exam', methods=['POST'])
 @login_required
 def submit_exam():
     try:
+        # Apply batch control for quota limits
+        session_id = request.remote_addr + "-" + session.get('email', 'unknown')
+        allowed, wait_time = allow_user(session_id)
+        if not allowed:
+            return jsonify({'success': False, 'error': f'⚠️ Too many submissions right now. Please wait {wait_time} seconds.'}), 429
+
         data = request.get_json()
         test_id = data.get('test_id')
         email = session.get('email')
         time_taken = data.get('time_taken')
-        
+
         if not test_id or not email:
             return jsonify({'success': False, 'error': 'Missing data'}), 400
-        
-
 
         worksheet_name = f"Questions_TEST{test_id}"
         q_sheet = gspread_client.open_by_key(SPREADSHEET_ID).worksheet(worksheet_name)
         questions = q_sheet.get_all_records(head=1)
-        
+
         correct = 0
         total = len(questions)
-        
+
         for question in questions:
             qid = str(question['QID'])
             user_answer = data.get('answers', {}).get(qid, '')
-            
+
             if question['Type'].lower() == 'multi':
                 correct_answers = set(a.strip().upper() for a in question['Answer'].split(','))
                 user_answers = set(a.strip().upper() for a in user_answer.split(',')) if user_answer else set()
@@ -215,27 +274,27 @@ def submit_exam():
             else:
                 if user_answer and user_answer.strip().upper() == question['Answer'].strip().upper():
                     correct += 1
-        
+
         score = correct
         percentage = (correct / total) * 100 if total > 0 else 0
-        
+
         spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
         try:
             results_sheet = spreadsheet.worksheet(f"Results_TEST{test_id}")
             headers = results_sheet.row_values(1)
             if "TimeTaken" not in headers:
-                results_sheet.append_row(["TimeTaken"], col=len(headers)+1)
+                results_sheet.append_row(["TimeTaken"], col=len(headers) + 1)
         except gspread.exceptions.WorksheetNotFound:
             results_sheet = spreadsheet.add_worksheet(
-                title=f"Results_TEST{test_id}", 
-                rows=100, 
+                title=f"Results_TEST{test_id}",
+                rows=100,
                 cols=11
             )
             results_sheet.append_row([
-                "Timestamp", "Email", "FullName", "Score", 
+                "Timestamp", "Email", "FullName", "Score",
                 "Correct", "Total", "Percentage", "TimeTaken"
             ])
-        
+
         results_sheet.append_row([
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             email,
@@ -246,7 +305,7 @@ def submit_exam():
             f"{percentage:.2f}%",
             time_taken
         ])
-        
+
         return jsonify({
             'success': True,
             'score': score,
@@ -255,20 +314,27 @@ def submit_exam():
             'percentage': f"{percentage:.2f}%",
             'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
-        
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/submit_answer', methods=['POST'])
 @login_required
 def submit_answer():
     try:
+        # Apply batch control for quota limits
+        session_id = request.remote_addr + "-" + session.get('email', 'unknown')
+        allowed, wait_time = allow_user(session_id)
+        if not allowed:
+            return jsonify({'success': False, 'error': f'⏳ Please wait {wait_time} seconds to submit answers due to usage limits.'}), 429
+
         data = request.get_json()
         test_id = data.get('test_id')
         qid = data.get('qid')
         selected_answers = data.get('selected_answers', '')
         status = data.get('status', 'answered')
-        
+
         spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
         try:
             answers_sheet = spreadsheet.worksheet(f"Answers_TEST{test_id}")
@@ -281,7 +347,7 @@ def submit_answer():
             answers_sheet.append_row([
                 "Timestamp", "Email", "QID", "SelectedAnswers", "Status"
             ])
-        
+
         answers_sheet.append_row([
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             session.get('email'),
@@ -289,11 +355,12 @@ def submit_answer():
             selected_answers,
             status
         ])
-        
+
         return jsonify({'success': True})
-        
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/log_violation', methods=['POST'])
 @login_required
