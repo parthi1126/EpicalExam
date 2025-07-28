@@ -50,12 +50,11 @@ try:
 except Exception as e:
     raise RuntimeError(f"Failed to access Google Sheet: {str(e)}")
 
-def retry_on_quota_exceeded(max_attempts=5, initial_delay=1, max_delay=60):
+def retry_on_quota_exceeded(max_attempts=5, delay_between_retries=60):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             attempts = 0
-            delay = initial_delay
             while attempts < max_attempts:
                 try:
                     return func(*args, **kwargs)
@@ -64,9 +63,8 @@ def retry_on_quota_exceeded(max_attempts=5, initial_delay=1, max_delay=60):
                         attempts += 1
                         if attempts == max_attempts:
                             raise Exception("Max retry attempts reached for Google Sheets API quota exceeded")
-                        sleep_time = min(delay * (2 ** (attempts - 1)) + random.uniform(0, 0.1), max_delay)
-                        logger.warning(f"Quota exceeded, retrying in {sleep_time:.2f} seconds (attempt {attempts}/{max_attempts})")
-                        time.sleep(sleep_time)
+                        logger.warning(f"Quota exceeded, retrying in {delay_between_retries} seconds (attempt {attempts}/{max_attempts})")
+                        time.sleep(delay_between_retries)
                     else:
                         raise e
             return None
