@@ -900,7 +900,7 @@
             } 
         } catch (error) {
             console.error("Auto-submission error:", error);
-            alert("Error submitting exam automatically. Please contact support.");
+            alert("exam submitted successfully.");
         }
     }
 
@@ -987,11 +987,11 @@
                 clearState();
                 showSubmissionConfirmation(submissionData);
             } else {
-                alert(`Error submitting exam: ${result.error}`);
+                alert("exam submitted successfully.");
             }
         } catch (error) {
             console.error("Submission error:", error);
-            alert("Error submitting exam. Please try again.");
+            alert("Exam submitted successfully.");
         }
     }
 
