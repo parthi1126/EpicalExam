@@ -897,9 +897,7 @@
                 saveSubmissionState(submissionData);
                 clearState();
                 showSubmissionConfirmation(submissionData);
-            } else {
-                alert(`Error submitting exam: ${result.error}`);
-            }
+            } 
         } catch (error) {
             console.error("Auto-submission error:", error);
             alert("Error submitting exam automatically. Please contact support.");
