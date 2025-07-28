@@ -576,7 +576,6 @@
             </div>
         </div>
     </div>
-
 <script>
     // Quiz data and state
     let questions = [];
@@ -591,6 +590,7 @@
     let isSubmitted = false;
     let isMonitoringViolations = true;
     const STORAGE_KEY = `exam_state_${testId}_${"{{ session.email }}"}`;
+    const SUBMISSION_KEY = `exam_submitted_${testId}_${"{{ session.email }}"}`;
 
     // DOM elements
     const questionText = document.getElementById('questionText');
@@ -601,6 +601,82 @@
     const timerEl = document.getElementById('timer');
     const questionPanel = document.getElementById('questionPanel');
     const navigationPanel = document.getElementById('navigationPanel');
+
+    // Function to show submission confirmation
+    function showSubmissionConfirmation(submissionData = {}) {
+        const timeTaken = submissionData.timeTaken || 'N/A';
+        const answeredCount = submissionData.answeredCount || questions.filter(q => q.selectedAnswer !== null).length;
+        const totalQuestions = submissionData.totalQuestions || questions.length;
+
+        const resultHtml = `
+            <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+                <div class="card border-0 shadow-lg" style="width: 100%; max-width: 520px;">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <div class="bg-success bg-opacity-10 d-inline-flex p-3 rounded-circle mb-3">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="#28a745">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
+                                </svg>
+                            </div>
+                            <h2 class="fw-bold text-success mb-2">Exam Submitted Successfully</h2>
+                            <p class="text-muted">Your assessment has been recorded.</p>
+                        </div>
+
+                        <div class="border rounded-3 overflow-hidden mb-4">
+                            <table class="table table-borderless mb-0">
+                                <tbody>
+                                    <tr class="border-bottom">
+                                        <td class="text-muted py-3 ps-4">Submission Time</td>
+                                        <td class="fw-semibold py-3 pe-4">${new Date().toLocaleString('en-US', { 
+                                            weekday: 'short', 
+                                            year: 'numeric', 
+                                            month: 'short', 
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}</td>
+                                    </tr>
+                                    <tr class="border-bottom">
+                                        <td class="text-muted py-3 ps-4">Time Taken</td>
+                                        <td class="fw-semibold py-3 pe-4">${timeTaken}</td>
+                                    </tr>
+                                    <tr class="border-bottom">
+                                        <td class="text-muted py-3 ps-4">Total Questions</td>
+                                        <td class="fw-semibold py-3 pe-4">${totalQuestions}</td>
+                                    </tr>
+                                    <tr class="border-bottom">
+                                        <td class="text-muted py-3 ps-4">Answered</td>
+                                        <td class="fw-semibold py-3 pe-4">${answeredCount}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted py-3 ps-4">Not Answered</td>
+                                        <td class="fw-semibold py-3 pe-4">${totalQuestions - answeredCount}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <p class="small text-muted mb-2">Results will be announced shortly...</p>
+                            <p class="small text-muted">Await further communication from the examination committee.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <style>
+                .card {
+                    border-radius: 12px;
+                }
+                table td {
+                    white-space: nowrap;
+                }
+            </style>
+        `;
+
+        document.querySelector(".container").innerHTML = resultHtml;
+        lockExamInterface();
+    }
 
     // Full-screen management
     function enterFullScreen() {
@@ -634,6 +710,26 @@
         } else if (document.msExitFullscreen) {
             document.msExitFullscreen();
         }
+    }
+
+    // Lock exam interface to prevent interaction
+    function lockExamInterface() {
+        document.getElementById('prevBtn').disabled = true;
+        document.getElementById('nextBtn').disabled = true;
+        document.getElementById('reviewBtn').disabled = true;
+        document.getElementById('submitBtn').disabled = true;
+
+        const questionButtons = document.querySelectorAll('.question-btn');
+        questionButtons.forEach(button => {
+            button.disabled = true;
+            button.style.cursor = 'not-allowed';
+        });
+
+        const options = document.querySelectorAll('.option');
+        options.forEach(option => {
+            option.style.pointerEvents = 'none';
+            option.style.opacity = '0.5';
+        });
     }
 
     // State management
@@ -691,6 +787,28 @@
         localStorage.removeItem(STORAGE_KEY);
     }
 
+    function saveSubmissionState(submissionData) {
+        localStorage.setItem(SUBMISSION_KEY, JSON.stringify({
+            submitted: true,
+            timeTaken: submissionData.timeTaken,
+            answeredCount: submissionData.answeredCount,
+            totalQuestions: submissionData.totalQuestions
+        }));
+    }
+
+    function checkSubmissionState() {
+        const submissionState = localStorage.getItem(SUBMISSION_KEY);
+        if (submissionState) {
+            const data = JSON.parse(submissionState);
+            if (data.submitted) {
+                isSubmitted = true;
+                showSubmissionConfirmation(data);
+                return true;
+            }
+        }
+        return false;
+    }
+
     function updateTimer() {
         if (totalSeconds <= 0) {
             clearInterval(timerInterval);
@@ -725,6 +843,8 @@
         isMonitoringViolations = false;
         exitFullScreen();
         
+        lockExamInterface();
+
         const timeElapsed = Date.now() - startTime;
         const minutes = Math.floor(timeElapsed / 60000);
         const seconds = Math.floor((timeElapsed % 60000) / 1000);
@@ -746,7 +866,7 @@
                         <div class="spinner-border text-primary mb-3" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <p>Time has ended. Submitting your exam automatically...</p>
+                        <p>Time has ended or maximum violations reached. Submitting your exam automatically...</p>
                     </div>
                 </div>
             `;
@@ -769,74 +889,14 @@
             
             if (result.success) {
                 isSubmitted = true;
+                const submissionData = {
+                    timeTaken: timeTaken,
+                    answeredCount: questions.filter(q => q.selectedAnswer !== null).length,
+                    totalQuestions: questions.length
+                };
+                saveSubmissionState(submissionData);
                 clearState();
-                const resultHtml = `
-                <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-                    <div class="card border-0 shadow-lg" style="width: 100%; max-width: 520px;">
-                        <div class="card-body p-5">
-                            <div class="text-center mb-4">
-                                <div class="bg-success bg-opacity-10 d-inline-flex p-3 rounded-circle mb-3">
-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="#28a745">
-                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
-                                    </svg>
-                                </div>
-                                <h2 class="fw-bold text-success mb-2">Exam Submitted Successfully</h2>
-                                <p class="text-muted">Your assessment has been recorded.</p>
-                            </div>
-
-                            <div class="border rounded-3 overflow-hidden mb-4">
-                                <table class="table table-borderless mb-0">
-                                    <tbody>
-                                        <tr class="border-bottom">
-                                            <td class="text-muted py-3 ps-4">Submission Time</td>
-                                            <td class="fw-semibold py-3 pe-4">${new Date().toLocaleString('en-US', { 
-                                                weekday: 'short', 
-                                                year: 'numeric', 
-                                                month: 'short', 
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })}</td>
-                                        </tr>
-                                        <tr class="border-bottom">
-                                            <td class="text-muted py-3 ps-4">Time Taken</td>
-                                            <td class="fw-semibold py-3 pe-4">${timeTaken}</td>
-                                        </tr>
-                                        <tr class="border-bottom">
-                                            <td class="text-muted py-3 ps-4">Total Questions</td>
-                                            <td class="fw-semibold py-3 pe-4">${questions.length}</td>
-                                        </tr>
-                                        <tr class="border-bottom">
-                                            <td class="text-muted py-3 ps-4">Answered</td>
-                                            <td class="fw-semibold py-3 pe-4">${questions.filter(q => q.selectedAnswer !== null).length}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="text-muted py-3 ps-4">Not Answered</td>
-                                            <td class="fw-semibold py-3 pe-4">${questions.filter(q => q.selectedAnswer === null).length}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="text-center mt-4">
-                                <p class="small text-muted mb-2">Results will be announced shortly....</p>
-                                <p class="small text-muted">Await further communication from the examination committee.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <style>
-                    .card {
-                        border-radius: 12px;
-                    }
-                    table td {
-                        white-space: nowrap;
-                    }
-                </style>
-                `;
-
-                document.querySelector(".container").innerHTML = resultHtml;
+                showSubmissionConfirmation(submissionData);
             } else {
                 alert(`Error submitting exam: ${result.error}`);
             }
@@ -920,70 +980,14 @@
             
             if (result.success) {
                 isSubmitted = true;
+                const submissionData = {
+                    timeTaken: timeTaken,
+                    answeredCount: questions.filter(q => q.selectedAnswer !== null).length,
+                    totalQuestions: questions.length
+                };
+                saveSubmissionState(submissionData);
                 clearState();
-                const resultHtml = `
-                <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-                    <div class="card border-0 shadow-lg" style="width: 100%; max-width: 520px;">
-                        <div class="card-body p-5">
-                            <div class="text-center mb-4">
-                                <div class="bg-success bg-opacity-10 d-inline-flex p-3 rounded-circle mb-3">
-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="#28a745">
-                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
-                                    </svg>
-                                </div>
-                                <h2 class="fw-bold text-success mb-2">Exam Submitted Successfully</h2>
-                                <p class="text-muted">Your assessment has been recorded.</p>
-                            </div>
-
-                            <div class="border rounded-3 overflow-hidden mb-4">
-                                <table class="table table-borderless mb-0">
-                                    <tbody>
-                                        <tr class="border-bottom">
-                                            <td class="text-muted py-3 ps-4">Submission Time</td>
-                                            <td class="fw-semibold py-3 pe-4">${new Date().toLocaleString('en-US', { 
-                                                weekday: 'short', 
-                                                year: 'numeric', 
-                                                month: 'short', 
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })}</td>
-                                        </tr>
-                                        <tr class="border-bottom">
-                                            <td class="text-muted py-3 ps-4">Time Taken</td>
-                                            <td class="fw-semibold py-3 pe-4">${timeTaken}</td>
-                                        </tr>
-                                        <tr class="border-bottom">
-                                            <td class="text-muted py-3 ps-4">Total Questions</td>
-                                            <td class="fw-semibold py-3 pe-4">${questions.length}</td>
-                                        </tr>
-                                        <tr class="border-bottom">
-                                            <td class="text-muted py-3 ps-4">Answered</td>
-                                            <td class="fw-semibold py-3 pe-4">${questions.filter(q => q.selectedAnswer !== null).length}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="text-center mt-4">
-                                <p class="small text-muted mb-2">${result.message || 'Results will be announced shortly...'}</p>
-                                <p class="small text-muted">Await further communication from the examination committee.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <style>
-                    .card {
-                        border-radius: 12px;
-                    }
-                    table td {
-                        white-space: nowrap;
-                    }
-                </style>
-                `;
-
-                document.querySelector(".container").innerHTML = resultHtml;
+                showSubmissionConfirmation(submissionData);
             } else {
                 alert(`Error submitting exam: ${result.error}`);
             }
@@ -1007,20 +1011,77 @@
             ? `Warning: ${violationType} detected! Violation ${violationCount} of ${maxViolations}.`
             : `Exam Terminated: Maximum violations (${maxViolations}) reached due to ${violationType}.`;
         
-        const violationModal = new bootstrap.Modal(document.getElementById('violationModal'));
+        const violationModal = new bootstrap.Modal(document.getElementById('violationModal'), {
+            backdrop: violationCount >= maxViolations ? 'static' : true,
+            keyboard: violationCount >= maxViolations ? false : true
+        });
         document.getElementById('violationMessage').textContent = violationMessage;
         document.getElementById('violationDetail').textContent = violationCount < maxViolations 
-            ? 'Please adhere to exam rules to avoid termination.'
-            : 'Your exam has been terminated due to excessive violations.';
+            ? 'Restricted keys (Esc, F1-F12, Ctrl, Alt, etc.) are not allowed during the exam.'
+            : 'Your exam has been terminated due to excessive violations and will be submitted automatically.';
+        
+        const modalFooter = document.querySelector('#violationModal .modal-footer');
+        if (violationCount >= maxViolations) {
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-primary" id="confirmViolationSubmitBtn">Submit Exam</button>
+            `;
+            document.getElementById('confirmViolationSubmitBtn').addEventListener('click', async () => {
+                violationModal.hide();
+                await performAutoSubmission();
+            });
+            setTimeout(async () => {
+                violationModal.hide();
+                await performAutoSubmission();
+            }, 3000);
+        } else {
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            `;
+        }
+        
         violationModal.show();
         
         if (violationCount >= maxViolations) {
             isMonitoringViolations = false;
             exitFullScreen();
-            document.querySelector('#violationModal .btn-primary').addEventListener('click', async () => {
-                await performAutoSubmission();
-            }, { once: true });
+            lockExamInterface();
         }
+    }
+
+    function setupKeyBlocking() {
+        document.addEventListener('keydown', (event) => {
+            if (!isMonitoringViolations || isSubmitted) return;
+
+            const blockedKeys = [
+                'Escape',
+                'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
+                'Meta',
+                'Control',
+                'Alt',
+                'Tab',
+                'ContextMenu',
+                'PrintScreen'
+            ];
+
+            if (blockedKeys.includes(event.key)) {
+                event.preventDefault();
+                logViolation(`Use of restricted key: ${event.key}`);
+                return false;
+            }
+
+            if (event.ctrlKey || event.metaKey || event.altKey) {
+                event.preventDefault();
+                logViolation(`Use of restricted key combination: ${event.key} with ${event.ctrlKey ? 'Ctrl' : ''}${event.metaKey ? 'Meta' : ''}${event.altKey ? 'Alt' : ''}`);
+                return false;
+            }
+        });
+
+        document.addEventListener('contextmenu', (event) => {
+            if (isMonitoringViolations && !isSubmitted) {
+                event.preventDefault();
+                logViolation('Right-click attempt');
+            }
+        });
     }
 
     function setupViolationMonitoring() {
@@ -1073,7 +1134,6 @@
                 throw new Error('No valid questions found after processing');
             }
             
-            // Load saved state after fetching questions
             const stateLoaded = loadState();
             if (!stateLoaded) {
                 startTime = Date.now();
@@ -1172,6 +1232,8 @@
     }
 
     function selectAnswer(optionIndex) {
+        if (!isMonitoringViolations || isSubmitted) return;
+        
         const currentQ = questions[currentQuestion];
         
         if (currentQ.type === 'multi') {
@@ -1200,6 +1262,7 @@
     }
 
     function toggleReview() {
+        if (!isMonitoringViolations || isSubmitted) return;
         questions[currentQuestion].isMarkedForReview = !questions[currentQuestion].isMarkedForReview;
         renderQuestion();
         renderQuestionGrid();
@@ -1208,6 +1271,7 @@
     }
 
     function nextQuestion() {
+        if (!isMonitoringViolations || isSubmitted) return;
         if (currentQuestion < questions.length - 1) {
             currentQuestion++;
             renderQuestion();
@@ -1217,6 +1281,7 @@
     }
 
     function previousQuestion() {
+        if (!isMonitoringViolations || isSubmitted) return;
         if (currentQuestion > 0) {
             currentQuestion--;
             renderQuestion();
@@ -1226,6 +1291,7 @@
     }
 
     function navigateToQuestion(questionIndex) {
+        if (!isMonitoringViolations || isSubmitted) return;
         currentQuestion = questionIndex;
         renderQuestion();
         renderQuestionGrid();
@@ -1276,8 +1342,12 @@
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
+        if (checkSubmissionState()) {
+            return; // Stop further initialization if exam is already submitted
+        }
         enterFullScreen();
         fetchQuestions();
+        setupKeyBlocking();
     });
 </script>
 </body>
