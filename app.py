@@ -80,21 +80,24 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# Routes
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '').strip()
 
+        # Get data with proper header handling
+        @retry_on_quota_exceeded()
+        def get_all_data():
+            return login_sheet.get_all_values()
+
         try:
-            @retry_on_quota_exceeded()
-            def get_all_data():
-                return login_sheet.get_all_values()
-            
             all_data = get_all_data()
             headers = [h.strip() for h in all_data[0]]
             users = [dict(zip(headers, row)) for row in all_data[1:]]
 
+            # Ensure IsActive column exists
             if 'IsActive' not in headers:
                 @retry_on_quota_exceeded()
                 def update_is_active_column():
@@ -124,6 +127,7 @@ def login():
                 flash('Incorrect password', 'danger')
                 return redirect(url_for('login'))
 
+            # Set IsActive to True
             try:
                 @retry_on_quota_exceeded()
                 def set_is_active():
@@ -328,15 +332,21 @@ def get_questions(test_id):
 @login_required
 def submit_exam():
     try:
+        # Add a random delay to stagger submissions
         time.sleep(random.uniform(0.5, 2.0))
+
         data = request.get_json()
         test_id = data.get('test_id')
         email = session.get('email')
         time_taken = data.get('time_taken')
+        answers = data.get('answers', {})
         
         if not test_id or not email:
             return jsonify({'success': False, 'error': 'Missing data'}), 400
-        
+
+        # Clear IsActive flag
+
+
         @retry_on_quota_exceeded()
         def get_questions_and_results():
             worksheet_name = f"Questions_TEST{test_id}"
@@ -368,7 +378,7 @@ def submit_exam():
         
         for question in questions:
             qid = str(question['QID'])
-            user_answer = data.get('answers', {}).get(qid, '')
+            user_answer = answers.get(qid, '')
             
             if question['Type'].lower() == 'multi':
                 correct_answers = set(a.strip().upper() for a in question['Answer'].split(','))
@@ -411,293 +421,6 @@ def submit_exam():
         logger.error(f"Error submitting exam for {email}: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/submit_answer', methods=['POST'])
-@login_required
-def submit_answer():
-    try:
-        data = request.get_json()
-        test_id = data.get('test_id')
-        qid = data.get('qid')
-        selected_answers = data.get('selected_answers', '')
-        status = data.get('status', 'answered')
-        
-        @retry_on_quota_exceeded()
-        def manage_answers_sheet():
-            spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
-            try:
-                answers_sheet = spreadsheet.worksheet(f"Answers_TEST{test_id}")
-            except gspread.exceptions.WorksheetNotFound:
-                answers_sheet = spreadsheet.add_worksheet(
-                    title=f"Answers_TEST{test_id}",
-                    rows=100,
-                    cols=6
-                )
-                answers_sheet.append_row([
-                    "Timestamp", "Email", "QID", "SelectedAnswers", "Status"
-                ])
-            return answers_sheet
-        
-        answers_sheet = manage_answers_sheet()
-        
-        @retry_on_quota_exceeded()
-        def append_answer():
-            answers_sheet.append_row([
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                session.get('email'),
-                qid,
-                selected_answers,
-                status
-            ])
-        
-        append_answer()
-        
-        logger.info(f"Answer submitted for test {test_id}, qid: {qid}, user: {session.get('email')}")
-        return jsonify({'success': True})
-        
-    except Exception as e:
-        logger.error(f"Error submitting answer for test {test_id}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/log_violation', methods=['POST'])
-@login_required
-def log_violation():
-    try:
-        data = request.get_json()
-        test_id = data.get('test_id')
-        email = session.get('email')
-        violation = data.get('violation')
-        violation_count = data.get('violation_count')
-        
-        if not all([test_id, email, violation, violation_count]):
-            return jsonify({'success': False, 'error': 'Missing data'}), 400
-        
-        @retry_on_quota_exceeded()
-        def manage_violations_sheet():
-            spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
-            try:
-                violations_sheet = spreadsheet.worksheet(f"Violations_TEST{test_id}")
-            except gspread.exceptions.WorksheetNotFound:
-                violations_sheet = spreadsheet.add_worksheet(
-                    title=f"Violations_TEST{test_id}", 
-                    rows=100, 
-                    cols=6
-                )
-                violations_sheet.append_row([
-                    "Timestamp", "Email", "FullName", "Violation", 
-                    "ViolationCount", "ActionTaken"
-                ])
-            return violations_sheet
-        
-        violations_sheet = manage_violations_sheet()
-        
-        @retry_on_quota_exceeded()
-        def append_violation():
-            violations_sheet.append_row([
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                email,
-                session.get('fullname'),
-                violation,
-                violation_count,
-                "Warning" if violation_count < 3 else "Exam Terminated"
-            ])
-        
-        append_violation()
-        
-        logger.info(f"Violation logged for {email}, test {test_id}: {violation}")
-        return jsonify({'success': True})
-        
-    except Exception as e:
-        logger.error(f"Error logging violation for {email}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# In your routes, combine operations where possible
-@app.route('/get_combined_data')
-@login_required
-def get_combined_data():
-    try:
-        @retry_on_quota_exceeded()
-        def get_data():
-            spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
-            # Get all needed worksheets in one API call
-            batch = spreadsheet.batch_get(['Instructions!A:A', 'TIME!A1:B2'])
-            return {
-                'instructions': batch[0],
-                'time_data': batch[1]
-            }
-        
-        data = get_data()
-        return jsonify(data)
-    except Exception as e:
-        logger.error(f"Error getting combined data: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-@app.route('/save_exam_state', methods=['POST'])
-@login_required
-def save_exam_state():
-    try:
-        data = request.get_json()
-        test_id = data.get('test_id')
-        email = session.get('email')
-        state = data.get('state')
-        
-        if not all([test_id, email, state]):
-            return jsonify({'success': False, 'error': 'Missing data'}), 400
-        
-        @retry_on_quota_exceeded()
-        def manage_state_sheet():
-            spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
-            try:
-                state_sheet = spreadsheet.worksheet(f"States_TEST{test_id}")
-            except gspread.exceptions.WorksheetNotFound:
-                state_sheet = spreadsheet.add_worksheet(
-                    title=f"States_TEST{test_id}",
-                    rows=100,
-                    cols=6
-                )
-                state_sheet.append_row([
-                    "Timestamp", "Email", "CurrentQuestion", "Questions", "TotalSeconds", "ViolationCount"
-                ])
-            return state_sheet
-        
-        state_sheet = manage_state_sheet()
-        
-        import json
-        questions_json = json.dumps(state.get('questions', []))
-        
-        @retry_on_quota_exceeded()
-        def get_state_data():
-            return state_sheet.get_all_values()
-        
-        all_data = get_state_data()
-        headers = all_data[0]
-        email_col = headers.index("Email") + 1
-        user_row = None
-        for idx, row in enumerate(all_data[1:], start=2):
-            if row[email_col - 1] == email:
-                user_row = idx
-                break
-        
-        row_data = [
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            email,
-            str(state.get('currentQuestion', 0)),
-            questions_json,
-            str(state.get('totalSeconds', 0)),
-            str(state.get('violationCount', 0))
-        ]
-        
-        @retry_on_quota_exceeded()
-        def update_state():
-            if user_row:
-                state_sheet.update(f"A{user_row}:F{user_row}", [row_data])
-            else:
-                state_sheet.append_row(row_data)
-        
-        update_state()
-        
-        logger.info(f"Exam state saved for {email}, test {test_id}")
-        return jsonify({'success': True})
-        
-    except Exception as e:
-        logger.error(f"Error saving exam state for {email}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/get_exam_state/<test_id>/<email>', methods=['GET'])
-@login_required
-def get_exam_state(test_id, email):
-    try:
-        if email != session.get('email'):
-            return jsonify({'success': False, 'error': 'Unauthorized access'}), 403
-        
-        @retry_on_quota_exceeded()
-        def get_state_sheet():
-            spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
-            try:
-                return spreadsheet.worksheet(f"States_TEST{test_id}")
-            except gspread.exceptions.WorksheetNotFound:
-                return None
-        
-        state_sheet = get_state_sheet()
-        if not state_sheet:
-            return jsonify({'success': False, 'error': 'No state found'}), 404
-        
-        @retry_on_quota_exceeded()
-        def get_state_data():
-            return state_sheet.get_all_values()
-        
-        all_data = get_state_data()
-        headers = all_data[0]
-        email_col = headers.index("Email") + 1
-        for row in all_data[1:]:
-            if row[email_col - 1] == email:
-                import json
-                state = {
-                    'currentQuestion': int(row[headers.index("CurrentQuestion")]),
-                    'questions': json.loads(row[headers.index("Questions")]),
-                    'totalSeconds': int(row[headers.index("TotalSeconds")]),
-                    'violationCount': int(row[headers.index("ViolationCount")]),
-                    'startTime': int(datetime.now().timestamp() * 1000 - 
-                                  (int(row[headers.index("TotalSeconds")]) * 1000))
-                }
-                logger.info(f"Exam state retrieved for {email}, test {test_id}")
-                return jsonify({'success': True, 'state': state})
-        
-        return jsonify({'success': False, 'error': 'No state found'}), 404
-        
-    except Exception as e:
-        logger.error(f"Error retrieving exam state for {email}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/clear_exam_state', methods=['POST'])
-@login_required
-def clear_exam_state():
-    try:
-        data = request.get_json()
-        test_id = data.get('test_id')
-        email = session.get('email')
-        
-        if not all([test_id, email]):
-            return jsonify({'success': False, 'error': 'Missing data'}), 400
-        
-        @retry_on_quota_exceeded()
-        def get_state_sheet():
-            spreadsheet = gspread_client.open_by_key(SPREADSHEET_ID)
-            try:
-                return spreadsheet.worksheet(f"States_TEST{test_id}")
-            except gspread.exceptions.WorksheetNotFound:
-                return None
-        
-        state_sheet = get_state_sheet()
-        if not state_sheet:
-            return jsonify({'success': True})  # No state to clear
-        
-        @retry_on_quota_exceeded()
-        def get_state_data():
-            return state_sheet.get_all_values()
-        
-        all_data = get_state_data()
-        headers = all_data[0]
-        email_col = headers.index("Email") + 1
-        user_row = None
-        for idx, row in enumerate(all_data[1:], start=2):
-            if row[email_col - 1] == email:
-                user_row = idx
-                break
-        
-        if user_row:
-            @retry_on_quota_exceeded()
-            def delete_row():
-                state_sheet.delete_rows(user_row)
-            delete_row()
-        
-        logger.info(f"Exam state cleared for {email}, test {test_id}")
-        return jsonify({'success': True})
-        
-    except Exception as e:
-        logger.error(f"Error clearing exam state for {email}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 @app.route('/clear_session', methods=['POST'])
 @login_required
 def clear_session():
@@ -718,7 +441,7 @@ def clear_session():
         all_data = get_login_data()
         headers = [h.strip() for h in all_data[0]]
         if 'IsActive' not in headers:
-            return jsonify({'success': True})  # No IsActive column, nothing to clear
+            return jsonify({'success': True})
         
         email_col = headers.index('EmployeeMailId') + 1
         is_active_col = headers.index('IsActive') + 1
@@ -747,6 +470,7 @@ def logout():
     try:
         email = session.get('email')
         
+        # Clear IsActive flag
         @retry_on_quota_exceeded()
         def get_login_data():
             return login_sheet.get_all_values()

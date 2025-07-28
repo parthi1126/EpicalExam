@@ -52,11 +52,6 @@
             color: #e74c3c;
         }
 
-        .test-info {
-            font-size: 14px;
-            color: #666;
-        }
-
         .main-content {
             display: grid;
             grid-template-columns: 2fr 1fr;
@@ -498,7 +493,7 @@
         </div>
     </div>
 
-    <!-- Custom Submit Confirmation Modal -->
+    <!-- Submit Confirmation Modal -->
     <div class="modal fade" id="submitConfirmationModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -591,6 +586,7 @@
     let timerInterval;
     let startTime = Date.now();
     let violationCount = 0;
+    let violations = [];
     const maxViolations = 3;
     let isSubmitted = false;
     let isMonitoringViolations = true;
@@ -653,88 +649,46 @@
             })),
             totalSeconds,
             violationCount,
+            violations,
             startTime
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        syncStateWithBackend(state);
     }
 
-    async function syncStateWithBackend(state) {
-        try {
-            await fetch('/save_exam_state', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    test_id: testId,
-                    email: "{{ session.email }}",
-                    state
-                })
-            });
-        } catch (error) {
-            console.error('Error syncing state:', error);
-        }
-    }
-
-    async function loadState() {
-        try {
-            // Try to load from backend first
-            const response = await fetch(`/get_exam_state/${testId}/${"{{ session.email }}"}`);
-            const result = await response.json();
-            
-            if (result.success && result.state) {
-                restoreState(result.state);
-                return true;
-            }
-        } catch (error) {
-            console.error('Error loading state from backend:', error);
-        }
-
-        // Fallback to localStorage
+    function loadState() {
         const savedState = localStorage.getItem(STORAGE_KEY);
         if (savedState) {
-            restoreState(JSON.parse(savedState));
+            const state = JSON.parse(savedState);
+            if (state.currentQuestion >= 0 && state.currentQuestion < questions.length) {
+                currentQuestion = state.currentQuestion;
+            }
+            if (state.totalSeconds >= 0) {
+                totalSeconds = state.totalSeconds;
+                startTime = Date.now() - (parseInt(initialTotalSeconds) - state.totalSeconds) * 1000;
+            }
+            if (state.violationCount >= 0) {
+                violationCount = state.violationCount;
+            }
+            if (state.violations) {
+                violations = state.violations;
+            }
+            if (state.questions) {
+                questions.forEach((q, index) => {
+                    const savedQ = state.questions.find(sq => sq.id === q.id);
+                    if (savedQ) {
+                        q.selectedAnswer = savedQ.selectedAnswer;
+                        q.isMarkedForReview = savedQ.isMarkedForReview;
+                        q.isAttempted = savedQ.isAttempted;
+                    }
+                });
+            }
             return true;
         }
         return false;
     }
 
-    function restoreState(state) {
-        if (state.currentQuestion >= 0 && state.currentQuestion < questions.length) {
-            currentQuestion = state.currentQuestion;
-        }
-        if (state.totalSeconds >= 0) {
-            totalSeconds = state.totalSeconds;
-            startTime = Date.now() - (parseInt(initialTotalSeconds) - state.totalSeconds) * 1000;
-        }
-        if (state.violationCount >= 0) {
-            violationCount = state.violationCount;
-        }
-        if (state.questions) {
-            questions.forEach((q, index) => {
-                const savedQ = state.questions.find(sq => sq.id === q.id);
-                if (savedQ) {
-                    q.selectedAnswer = savedQ.selectedAnswer;
-                    q.isMarkedForReview = savedQ.isMarkedForReview;
-                    q.isAttempted = savedQ.isAttempted;
-                }
-            });
-        }
-    }
-
     function clearState() {
         localStorage.removeItem(STORAGE_KEY);
-        fetch('/clear_exam_state', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                test_id: testId,
-                email: "{{ session.email }}"
-            })
-        }).catch(error => console.error('Error clearing state:', error));
     }
 
     function updateTimer() {
@@ -1039,51 +993,33 @@
         }
     }
 
-    async function logViolation(violationType) {
+    function logViolation(violationType) {
         if (!isMonitoringViolations) return;
 
         violationCount++;
+        violations.push({
+            type: violationType,
+            timestamp: new Date().toISOString()
+        });
         saveState();
+        
         const violationMessage = violationCount < maxViolations 
             ? `Warning: ${violationType} detected! Violation ${violationCount} of ${maxViolations}.`
             : `Exam Terminated: Maximum violations (${maxViolations}) reached due to ${violationType}.`;
         
-        try {
-            const response = await fetch('/log_violation', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    test_id: testId,
-                    email: "{{ session.email }}",
-                    violation: violationType,
-                    violation_count: violationCount
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                const violationModal = new bootstrap.Modal(document.getElementById('violationModal'));
-                document.getElementById('violationMessage').textContent = violationMessage;
-                document.getElementById('violationDetail').textContent = violationCount < maxViolations 
-                    ? 'Please adhere to exam rules to avoid termination.'
-                    : 'Your exam has been terminated due to excessive violations.';
-                violationModal.show();
-                
-                if (violationCount >= maxViolations) {
-                    isMonitoringViolations = false;
-                    exitFullScreen();
-                    document.querySelector('#violationModal .btn-primary').addEventListener('click', async () => {
-                        await performAutoSubmission();
-                    }, { once: true });
-                }
-            } else {
-                console.error("Error logging violation:", result.error);
-            }
-        } catch (error) {
-            console.error("Error logging violation:", error);
+        const violationModal = new bootstrap.Modal(document.getElementById('violationModal'));
+        document.getElementById('violationMessage').textContent = violationMessage;
+        document.getElementById('violationDetail').textContent = violationCount < maxViolations 
+            ? 'Please adhere to exam rules to avoid termination.'
+            : 'Your exam has been terminated due to excessive violations.';
+        violationModal.show();
+        
+        if (violationCount >= maxViolations) {
+            isMonitoringViolations = false;
+            exitFullScreen();
+            document.querySelector('#violationModal .btn-primary').addEventListener('click', async () => {
+                await performAutoSubmission();
+            }, { once: true });
         }
     }
 
@@ -1138,7 +1074,7 @@
             }
             
             // Load saved state after fetching questions
-            const stateLoaded = await loadState();
+            const stateLoaded = loadState();
             if (!stateLoaded) {
                 startTime = Date.now();
                 totalSeconds = parseInt(initialTotalSeconds) || 600;
@@ -1324,47 +1260,9 @@
         unattemptedCount.textContent = `${unattempted}/${totalQuestions}`;
     }
 
-    function saveAnswer(status = 'answered') {
-        if (questions.length === 0) return;
-        
-        const q = questions[currentQuestion];
-        let selectedAnswers;
-        
-        if (q.type === 'multi' && Array.isArray(q.selectedAnswer)) {
-            selectedAnswers = q.selectedAnswer.map(index => String.fromCharCode(65 + index)).join(',');
-        } else if (q.selectedAnswer !== null) {
-            selectedAnswers = String.fromCharCode(65 + q.selectedAnswer);
-        } else {
-            selectedAnswers = '';
-        }
-        
-        const data = {
-            test_id: testId,
-            qid: q.id,
-            selected_answers: selectedAnswers,
-            status: status
-        };
-        
-        fetch('/submit_answer', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        }).catch(error => console.error('Error saving answer:', error));
-    }
-
     // Event listeners
-    document.getElementById('prevBtn').addEventListener('click', () => {
-        saveAnswer();
-        previousQuestion();
-    });
-
-    document.getElementById('nextBtn').addEventListener('click', () => {
-        saveAnswer();
-        nextQuestion();
-    });
-
+    document.getElementById('prevBtn').addEventListener('click', previousQuestion);
+    document.getElementById('nextBtn').addEventListener('click', nextQuestion);
     document.getElementById('reviewBtn').addEventListener('click', toggleReview);
     document.getElementById('submitBtn').addEventListener('click', showSubmitConfirmation);
     document.getElementById('confirmSubmitBtn').addEventListener('click', performSubmission);
