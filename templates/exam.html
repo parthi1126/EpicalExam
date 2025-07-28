@@ -1075,15 +1075,7 @@
                 return false;
             }
         });
-
-        document.addEventListener('contextmenu', (event) => {
-            if (isMonitoringViolations && !isSubmitted) {
-                event.preventDefault();
-                logViolation('Right-click attempt');
-            }
-        });
     }
-
     function setupViolationMonitoring() {
         window.addEventListener('blur', () => {
             if (isMonitoringViolations) {
