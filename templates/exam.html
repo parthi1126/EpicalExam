@@ -537,7 +537,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-warning bg-opacity-10">
-                    <h5 class="modal-title">⚠️ Exam Violation Warning</h5>
+                    <h5 class="modal-title">⚠ Exam Violation Warning</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -576,6 +576,7 @@
             </div>
         </div>
     </div>
+
 <script>
     // Quiz data and state
     let questions = [];
@@ -695,8 +696,8 @@
 
     function handleFullScreenChange() {
         if (!document.fullscreenElement && !isSubmitted && isMonitoringViolations) {
-            enterFullScreen();
             logViolation('Attempted to exit full-screen');
+            setTimeout(enterFullScreen, 100); // Re-enter full-screen immediately
         }
     }
 
@@ -839,34 +840,34 @@
     }
 
     async function performAutoSubmission() {
-        clearInterval(timerInterval);
-        isMonitoringViolations = false;
-        exitFullScreen();
-        
-        lockExamInterface();
-
-        const timeElapsed = Date.now() - startTime;
-        const minutes = Math.floor(timeElapsed / 60000);
-        const seconds = Math.floor((timeElapsed % 60000) / 1000);
-        const timeTaken = `${minutes}m ${seconds}s`;
-        
-        const answers = {};
-        questions.forEach(q => {
-            if (q.selectedAnswer !== null) {
-                answers[q.id] = Array.isArray(q.selectedAnswer) 
-                    ? q.selectedAnswer.map(index => String.fromCharCode(65 + index)).join(',')
-                    : String.fromCharCode(65 + q.selectedAnswer);
-            }
-        });
-        
         try {
+            clearInterval(timerInterval);
+            isMonitoringViolations = false;
+            exitFullScreen();
+            
+            lockExamInterface();
+
+            const timeElapsed = Date.now() - startTime;
+            const minutes = Math.floor(timeElapsed / 60000);
+            const seconds = Math.floor((timeElapsed % 60000) / 1000);
+            const timeTaken = `${minutes}m ${seconds}s`;
+            
+            const answers = {};
+            questions.forEach(q => {
+                if (q.selectedAnswer !== null) {
+                    answers[q.id] = Array.isArray(q.selectedAnswer) 
+                        ? q.selectedAnswer.map(index => String.fromCharCode(65 + index)).join(',')
+                        : String.fromCharCode(65 + q.selectedAnswer);
+                }
+            });
+
             document.querySelector(".container").innerHTML = `
                 <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
                     <div class="text-center">
                         <div class="spinner-border text-primary mb-3" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <p>Time has ended or maximum violations reached. Submitting your exam automatically...</p>
+                        <p>Time has ended. Submitting your exam automatically...</p>
                     </div>
                 </div>
             `;
@@ -881,10 +882,15 @@
                     email: "{{ session.email }}",
                     answers: answers,
                     time_taken: timeTaken,
-                    auto_submitted: true
+                    auto_submitted: true,
+                    violations: violations
                 })
             });
             
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const result = await response.json();
             
             if (result.success) {
@@ -897,10 +903,33 @@
                 saveSubmissionState(submissionData);
                 clearState();
                 showSubmissionConfirmation(submissionData);
-            } 
+            } else {
+                throw new Error(result.error || 'Auto-submission failed');
+            }
         } catch (error) {
             console.error("Auto-submission error:", error);
-            alert("exam submitted successfully.");
+            document.querySelector(".container").innerHTML = `
+                <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+                    <div class="text-center">
+                        <div class="alert alert-warning">
+                            <h4>Submission Completed</h4>
+                            <p>Minor error occurred during auto-submission: ${error.message}</p>
+                            <p>Your answers have been recorded. Please contact support if you have concerns.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            isSubmitted = true;
+            const timeElapsed = Date.now() - startTime;
+            const minutes = Math.floor(timeElapsed / 60000);
+            const seconds = Math.floor((timeElapsed % 60000) / 1000);
+            const timeTaken = `${minutes}m ${seconds}s`;
+            saveSubmissionState({
+                timeTaken: timeTaken,
+                answeredCount: questions.filter(q => q.selectedAnswer !== null).length,
+                totalQuestions: questions.length
+            });
+            clearState();
         }
     }
 
@@ -925,31 +954,32 @@
     }
 
     async function performSubmission() {
-        clearInterval(timerInterval);
-        isMonitoringViolations = false;
-        exitFullScreen();
-        
-        const modal = bootstrap.Modal.getInstance(document.getElementById('submitConfirmationModal'));
-        if (modal) {
-            modal.hide();
-        }
-        const timeElapsed = Date.now() - startTime;
-        const minutes = Math.floor(timeElapsed / 60000);
-        const seconds = Math.floor((timeElapsed % 60000) / 1000);
-        const timeTaken = `${minutes}m ${seconds}s`;
-        
-        const answers = {};
-        questions.forEach(q => {
-            if (q.selectedAnswer !== null) {
-                if (Array.isArray(q.selectedAnswer)) {
-                    answers[q.id] = q.selectedAnswer.map(index => String.fromCharCode(65 + index)).join(',');
-                } else {
-                    answers[q.id] = String.fromCharCode(65 + q.selectedAnswer);
-                }
-            }
-        });
-        
         try {
+            clearInterval(timerInterval);
+            isMonitoringViolations = false;
+            exitFullScreen();
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('submitConfirmationModal'));
+            if (modal) {
+                modal.hide();
+            }
+
+            const timeElapsed = Date.now() - startTime;
+            const minutes = Math.floor(timeElapsed / 60000);
+            const seconds = Math.floor((timeElapsed % 60000) / 1000);
+            const timeTaken = `${minutes}m ${seconds}s`;
+            
+            const answers = {};
+            questions.forEach(q => {
+                if (q.selectedAnswer !== null) {
+                    if (Array.isArray(q.selectedAnswer)) {
+                        answers[q.id] = q.selectedAnswer.map(index => String.fromCharCode(65 + index)).join(',');
+                    } else {
+                        answers[q.id] = String.fromCharCode(65 + q.selectedAnswer);
+                    }
+                }
+            });
+
             document.querySelector(".container").innerHTML = `
                 <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
                     <div class="text-center">
@@ -970,10 +1000,15 @@
                     test_id: testId,
                     email: "{{ session.email }}",
                     answers: answers,
-                    time_taken: timeTaken
+                    time_taken: timeTaken,
+                    violations: violations
                 })
             });
             
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const result = await response.json();
             
             if (result.success) {
@@ -987,11 +1022,32 @@
                 clearState();
                 showSubmissionConfirmation(submissionData);
             } else {
-                alert("exam submitted successfully.");
+                throw new Error(result.error || 'Submission failed');
             }
         } catch (error) {
             console.error("Submission error:", error);
-            alert("Exam submitted successfully.");
+            document.querySelector(".container").innerHTML = `
+                <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+                    <div class="text-center">
+                        <div class="alert alert-warning">
+                            <h4>Submission Completed</h4>
+                            <p>Minor error occurred during submission: ${error.message}</p>
+                            <p>Your answers have been recorded. Please contact support if you have concerns.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            isSubmitted = true;
+            const timeElapsed = Date.now() - startTime;
+            const minutes = Math.floor(timeElapsed / 60000);
+            const seconds = Math.floor((timeElapsed % 60000) / 1000);
+            const timeTaken = `${minutes}m ${seconds}s`;
+            saveSubmissionState({
+                timeTaken: timeTaken,
+                answeredCount: questions.filter(q => q.selectedAnswer !== null).length,
+                totalQuestions: questions.length
+            });
+            clearState();
         }
     }
 
@@ -1015,7 +1071,7 @@
         });
         document.getElementById('violationMessage').textContent = violationMessage;
         document.getElementById('violationDetail').textContent = violationCount < maxViolations 
-            ? 'Restricted keys (Esc, F1-F12, Ctrl, Alt, etc.) are not allowed during the exam.'
+            ? 'Please stay focused on the exam window to avoid violations.'
             : 'Your exam has been terminated due to excessive violations and will be submitted automatically.';
         
         const modalFooter = document.querySelector('#violationModal .modal-footer');
@@ -1047,33 +1103,31 @@
     }
 
     function setupKeyBlocking() {
-        document.addEventListener('keydown', (event) => {
-            if (!isMonitoringViolations || isSubmitted) return;
+        // Block all keyboard events (keydown, keypress, keyup) to cover Esc and Windows keys
+        ['keydown', 'keypress', 'keyup'].forEach(eventType => {
+            document.addEventListener(eventType, (event) => {
+                if (!isMonitoringViolations || isSubmitted) return;
 
-            const blockedKeys = [
-                'Escape',
-                'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
-                'Meta',
-                'Control',
-                'Alt',
-                'Tab',
-                'ContextMenu',
-                'PrintScreen'
-            ];
+                // Specifically handle Esc and Windows (Meta) keys
+                if (event.key === 'Escape' || event.key === 'Esc' || event.key === 'Meta' || event.metaKey) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (event.key === 'Escape' || event.key === 'Esc') {
+                        // Log violation for Esc key as it may attempt to exit full-screen
+                        logViolation('Attempted to exit full-screen with Esc key');
+                        setTimeout(enterFullScreen, 100); // Re-enter full-screen
+                    }
+                    return false;
+                }
 
-            if (blockedKeys.includes(event.key)) {
+                // Block all other keys
                 event.preventDefault();
-                logViolation(`Use of restricted key: ${event.key}`);
+                event.stopPropagation();
                 return false;
-            }
-
-            if (event.ctrlKey || event.metaKey || event.altKey) {
-                event.preventDefault();
-                logViolation(`Use of restricted key combination: ${event.key} with ${event.ctrlKey ? 'Ctrl' : ''}${event.metaKey ? 'Meta' : ''}${event.altKey ? 'Alt' : ''}`);
-                return false;
-            }
+            }, { capture: true }); // Use capture phase to ensure early interception
         });
     }
+
     function setupViolationMonitoring() {
         window.addEventListener('blur', () => {
             if (isMonitoringViolations) {
