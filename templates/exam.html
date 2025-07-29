@@ -494,7 +494,6 @@
                         Mark for Review 
                     </button>
                     <button class="btn btn-save" id="nextBtn">
-                         Next →
                     </button>
                 </div>
             </div>
@@ -594,95 +593,7 @@
 
 <script>
             // Enhanced security event listeners
-        function setupSecurity() {
-            // Keyboard restrictions
-            document.addEventListener("keydown", function(e) {
-                // Block escape key
-                if (e.key === "Escape") {
-                    e.preventDefault();
-                    logViolation("Attempted to exit fullscreen or cancel actions");
-                }
-                
-                // Block developer tools shortcuts
-                const devToolsShortcuts = [
-                    "F12",
-                    "F8",
-                    "F5",
-                    "Ctrl+Shift+I",
-                    "Ctrl+Shift+J",
-                    "Ctrl+Shift+C",
-                    "Ctrl+U"
-                ];
-                
-                const currentShortcut = [
-                    e.ctrlKey ? "Ctrl+" : "",
-                    e.shiftKey ? "Shift+" : "",
-                    e.altKey ? "Alt+" : "",
-                    e.key
-                ].join("");
-                
-                if (devToolsShortcuts.includes(e.key) || 
-                    devToolsShortcuts.includes(currentShortcut)) {
-                    e.preventDefault();
-                    logViolation("Attempted to open developer tools");
-                }
-                
-                // Block copy/paste shortcuts
-                if ((e.ctrlKey || e.metaKey) && ["c", "x", "v", "a"].includes(e.key.toLowerCase())) {
-                    e.preventDefault();
-                    logViolation("Attempted to copy/paste");
-                }
-            });
-            
-            // Right click prevention
-            document.addEventListener("contextmenu", function(e) {
-                e.preventDefault();
-            });
-            
-            // Text selection prevention
-            document.addEventListener("selectstart", function(e) {
-                e.preventDefault();
-            });
-            
-            // Drag prevention
-            document.addEventListener("dragstart", function(e) {
-                e.preventDefault();
-            });
-            
-            // Image drag prevention (for dynamic content)
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    mutation.addedNodes.forEach(function(node) {
-                        if (node.nodeType === 1) { // Element node
-                            if (node.tagName === "IMG") {
-                                node.addEventListener("dragstart", function(e) {
-                                    e.preventDefault();
-                                });
-                            }
-                            
-                            // Add to any existing images
-                            node.querySelectorAll("img").forEach(img => {
-                                img.addEventListener("dragstart", function(e) {
-                                    e.preventDefault();
-                                });
-                            });
-                        }
-                    });
-                });
-            });
-            
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-        }
 
-        // Initialize this with your other setup
-        document.addEventListener('DOMContentLoaded', () => {
-            enterFullScreen();
-            fetchQuestions();
-            setupSecurity(); // Add this line
-        });
     // Quiz data and state
     let questions = [];
     let currentQuestion = 0;
