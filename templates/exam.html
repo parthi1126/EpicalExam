@@ -211,6 +211,7 @@
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            pointer-events: none;
         }
 
         .navigation-panel {
@@ -397,21 +398,6 @@
                 height: auto;
             }
         }
-        .question-text, .option-text {
-                cursor: default;
-                user-select: none;
-                -webkit-user-select: none;
-                -moz-user-select: none;
-                -ms-user-select: none;
-            }
-
-            .option {
-                cursor: pointer;
-                user-select: none;
-                -webkit-user-select: none;
-                -moz-user-select: none;
-                -ms-user-select: none;
-            }
     </style>
 </head>
 <body>
@@ -493,7 +479,8 @@
                     <button class="btn btn-review" id="reviewBtn">
                         Mark for Review 
                     </button>
-                    <button class="btn btn-save" id="nextBtn"> Next →
+                    <button class="btn btn-save" id="nextBtn">
+                         Next →
                     </button>
                 </div>
             </div>
@@ -513,6 +500,7 @@
             <div class="modal-content">
                 <div class="modal-header bg-light">
                     <h5 class="modal-title">Confirm Submission</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="d-flex align-items-center mb-3">
@@ -551,6 +539,7 @@
             <div class="modal-content">
                 <div class="modal-header bg-warning bg-opacity-10">
                     <h5 class="modal-title">⚠️ Exam Violation Warning</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="d-flex align-items-center mb-3">
@@ -590,8 +579,6 @@
     </div>
 
 <script>
-            // Enhanced security event listeners
-
     // Quiz data and state
     let questions = [];
     let currentQuestion = 0;
@@ -604,7 +591,6 @@
     const maxViolations = 3;
     let isSubmitted = false;
     let isMonitoringViolations = true;
-    let submitConfirmationModal;
     const STORAGE_KEY = `exam_state_${testId}_${"{{ session.email }}"}`;
     const SUBMISSION_KEY = `exam_submitted_${testId}_${"{{ session.email }}"}`;
 
@@ -734,6 +720,7 @@
         document.getElementById('nextBtn').disabled = true;
         document.getElementById('reviewBtn').disabled = true;
         document.getElementById('submitBtn').disabled = true;
+        document.getElementById('submitBtn').style.display = 'none'; 
 
         const questionButtons = document.querySelectorAll('.question-btn');
         questionButtons.forEach(button => {
@@ -857,6 +844,8 @@
     async function performAutoSubmission() {
         clearInterval(timerInterval);
         isMonitoringViolations = false;
+
+        
         exitFullScreen();
         
         lockExamInterface();
@@ -905,7 +894,6 @@
             const result = await response.json();
             
             if (result.success) {
-                submitConfirmationModal.hide();
                 isSubmitted = true;
                 const submissionData = {
                     timeTaken: timeTaken,
@@ -949,11 +937,15 @@
         document.getElementById('timeRemainingModal').textContent = 
             document.getElementById('timer').textContent;
         
-        submitConfirmationModal = new bootstrap.Modal(document.getElementById('submitConfirmationModal'))
+        const modal = new bootstrap.Modal(document.getElementById('submitConfirmationModal'));
         modal.show();
     }
 
     async function performSubmission() {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('submitConfirmationModal'));
+            if (modal) {
+                modal.hide(); // Hide the confirmation modal immediately
+            }
         clearInterval(timerInterval);
         isMonitoringViolations = false;
         exitFullScreen();
@@ -1374,4 +1366,4 @@
     });
 </script>
 </body>
-</html>
+</html> 

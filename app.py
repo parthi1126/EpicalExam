@@ -500,4 +500,3 @@ def logout():
         logger.error(f"Error during logout for {email}: {str(e)}")
         flash(f"Error during logout: {str(e)}", "danger")
         return redirect(url_for('login'))
-
