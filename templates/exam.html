@@ -604,6 +604,7 @@
     const maxViolations = 3;
     let isSubmitted = false;
     let isMonitoringViolations = true;
+    let submitConfirmationModal;
     const STORAGE_KEY = `exam_state_${testId}_${"{{ session.email }}"}`;
     const SUBMISSION_KEY = `exam_submitted_${testId}_${"{{ session.email }}"}`;
 
@@ -904,6 +905,7 @@
             const result = await response.json();
             
             if (result.success) {
+                submitConfirmationModal.hide();
                 isSubmitted = true;
                 const submissionData = {
                     timeTaken: timeTaken,
@@ -947,7 +949,7 @@
         document.getElementById('timeRemainingModal').textContent = 
             document.getElementById('timer').textContent;
         
-        const modal = new bootstrap.Modal(document.getElementById('submitConfirmationModal'));
+        submitConfirmationModal = new bootstrap.Modal(document.getElementById('submitConfirmationModal'))
         modal.show();
     }
 
