@@ -1,1 +1,1466 @@
-templates/exam.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .timer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .timer-icon {
+            color: #e74c3c;
+        }
+
+        .timer-text {
+            color: #e74c3c;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            align-items: stretch;
+        }
+
+        .question-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            min-height: 500px;
+            transition: min-height 0.3s ease;
+        }
+
+        .question-panel.has-image {
+            min-height: 650px;
+        }
+
+        .question-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .question-text {
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 25px;
+            color: #333;
+        }
+
+        .options {
+            margin-bottom: 30px;
+            flex-grow: 1;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option:hover {
+            background-color: #f8f9fa;
+            border-color: #007bff;
+        }
+
+        .option.selected {
+            background-color: #e3f2fd;
+            border-color: #007bff;
+        }
+
+        .option input[type="radio"], .option input[type="checkbox"] {
+            margin-right: 12px;
+            transform: scale(1.2);
+        }
+
+        .option-label {
+            font-weight: bold;
+            margin-right: 10px;
+            color: #555;
+        }
+
+        .option-text {
+            color: #333;
+        }
+
+        .action-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-top: 20px;
+            width: 790px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: 2px solid;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-previous {
+            background: white;
+            border-color: #6c757d;
+            color: #6c757d;
+        }
+
+        .btn-previous:hover {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-review {
+            background: white;
+            border-color: #FFA500;
+            color: #FFA500;
+        }
+
+        .btn-review:hover {
+            background: #FFA500;
+            color: white;
+        }
+
+        .btn-review.marked {
+            background: #e9ecef;
+        }
+
+        .btn-save {
+            background: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background: #218838;
+        }
+
+        .btn-submit {
+            background: #dc3545;
+            border-color: #dc3545;
+            color: white;
+            padding: 15px;
+            padding-left: 100px;
+            padding-right: 100px;
+        }
+
+        .btn-submit:hover {
+            background: #c82333;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .navigation-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+            transition: height 0.3s ease;
+            overflow: hidden;
+        }
+
+        .navigation-panel.tall {
+            height: 700px;
+        }
+
+        .nav-header {
+            background: #e3f2fd;
+            color: #1976d2;
+            text-align: center;
+            padding: 12px;
+            border-radius: 6px 6px 0 0;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .nav-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .question-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .question-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .question-btn.current {
+            background: #00BFFF;
+            color: white;
+        }
+
+        .question-btn.answered {
+            background: #4caf50;
+            color: white;
+        }
+
+        .question-btn.review {
+            background: #FFA500;
+            color: white;
+        }
+
+        .question-btn.attempted {
+            background: #ffeb3b;
+            color: #333;
+        }
+
+        .question-btn.unattempted {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .question-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .summary {
+            margin-bottom: 20px;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .badge {
+            background: #6c757d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .legend {
+            font-size: 12px;
+            margin-top: auto;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+            gap: 15px;
+            width: 100%;
+            margin-bottom: 20px;
+            margin-top: 0px;
+        }
+
+        header img {
+            margin-top: 0;
+            height: 50px;
+            width: auto;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            color: var(--primary-dark);
+            font-weight: 600;
+        }
+
+        .buttonss {
+            display: flex;
+        }
+
+        .modal.fade .modal-dialog {
+            transform: translateY(-50px);
+            transition: transform 0.3s ease-out;
+        }
+
+        .modal.show .modal-dialog {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                justify-content: center;
+            }
+            
+            .question-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            
+            .action-panel {
+                width: 100%;
+            }
+            
+            .buttonss {
+                flex-direction: column;
+            }
+            
+            .question-panel,
+            .question-panel.has-image,
+            .navigation-panel,
+            .navigation-panel.tall {
+                min-height: auto;
+                height: auto;
+            }
+            .question-text, .option-text {
+                cursor: default;
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+            }
+
+            .option {
+                cursor: pointer;
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='image/logo.png') }}" width="50px" height="50px" alt="Epical Layouts Logo" />
+        <h1>Epical Layouts</h1>
+        <script>
+            // Pass duration from Flask to JavaScript
+            const initialDuration = "{{ duration }}";
+            const initialTotalSeconds = "{{ total_seconds }}";
+        </script>
+    </header>
+    <div class="container">
+        <div class="header">
+            <div class="timer">
+                <span class="timer-icon">⏰</span>
+                <span>Time: <span class="timer-text" id="timer">10:00</span></span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Question Panel -->
+            <div class="question-panel" id="questionPanel">
+                <div class="question-header" id="questionHeader">Q1</div>
+                <div id="questionImageContainer" style="margin: 15px 0; text-align: center;"></div>
+                <div class="question-text" id="questionText">
+                    Loading question...
+                </div>
+                
+                <div class="options" id="optionsContainer">
+                    <div class="option">
+                        <input type="radio" name="answer">
+                        <span class="option-label">A</span>
+                        <span class="option-text">Loading options...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Panel -->
+            <div class="navigation-panel" id="navigationPanel">
+                <div class="nav-header">QUESTIONS</div>
+                <div class="nav-content">
+                    <div class="question-grid" id="questionGrid">
+                        <!-- Question buttons will be populated by JavaScript -->
+                    </div>
+
+                    <div class="summary">
+                        <div class="summary-item">
+                            <span>Un-Attempted Question</span>
+                            <span class="badge" id="unattemptedCount">0</span>
+                        </div>
+                    </div>
+
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #e0e0e0;"></div>
+                            <span>Not Answered</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #4caf50;"></div>
+                            <span>Answered</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #FFA500;"></div>
+                            <span>Marked for Review</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Panel -->
+        <div class="buttonss">
+            <div class="action-panel">
+                <div class="action-buttons">
+                    <button class="btn btn-previous" id="prevBtn" disabled>
+                        ← Previous
+                    </button>
+                    <button class="btn btn-review" id="reviewBtn">
+                        Mark for Review 
+                    </button>
+                    <button class="btn btn-save" id="nextBtn">
+                         Next →
+                    </button>
+                </div>
+            </div>
+            <div class="action-panel" style="width:400px; margin-left: 20px;">
+                <div class="action-buttons">
+                    <button class="btn btn-submit" id="submitBtn">
+                        Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Confirmation Modal -->
+    <div class="modal fade" id="submitConfirmationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title">Confirm Submission</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-warning bg-opacity-10 p-2 rounded-circle me-3">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="#ffc107">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Are you sure you want to submit?</h6>
+                            <p class="small text-muted mb-0">Once submitted, you cannot make changes to your answers.</p>
+                        </div>
+                    </div>
+                    <div class="alert alert-light border small">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Questions answered:</span>
+                            <span class="fw-semibold" id="answeredCountModal">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Time remaining:</span>
+                            <span class="fw-semibold" id="timeRemainingModal">10:00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmSubmitBtn">Submit Exam</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Violation Warning Modal -->
+    <div class="modal fade" id="violationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning bg-opacity-10">
+                    <h5 class="modal-title">⚠️ Exam Violation Warning</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-warning bg-opacity-10 p-2 rounded-circle me-3">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="#ffc107">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h6 class="mb-1" id="violationMessage"></h6>
+                            <p class="small text-muted mb-0" id="violationDetail"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full-Screen Prompt Modal -->
+    <div class="modal fade" id="fullscreenPromptModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title">Enter Full-Screen Mode</h5>
+                </div>
+                <div class="modal-body">
+                    <p>This exam requires full-screen mode to proceed. Please click the button below to enter full-screen mode.</p>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-primary" id="enterFullscreenBtn">Enter Full-Screen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+            // Enhanced security event listeners
+        function setupSecurity() {
+            // Keyboard restrictions
+            document.addEventListener("keydown", function(e) {
+                // Block escape key
+                if (e.key === "Escape") {
+                    e.preventDefault();
+                    logViolation("Attempted to exit fullscreen or cancel actions");
+                }
+                
+                // Block developer tools shortcuts
+                const devToolsShortcuts = [
+                    "F12",
+                    "F8",
+                    "F5",
+                    "Ctrl+Shift+I",
+                    "Ctrl+Shift+J",
+                    "Ctrl+Shift+C",
+                    "Ctrl+U"
+                ];
+                
+                const currentShortcut = [
+                    e.ctrlKey ? "Ctrl+" : "",
+                    e.shiftKey ? "Shift+" : "",
+                    e.altKey ? "Alt+" : "",
+                    e.key
+                ].join("");
+                
+                if (devToolsShortcuts.includes(e.key) || 
+                    devToolsShortcuts.includes(currentShortcut)) {
+                    e.preventDefault();
+                    logViolation("Attempted to open developer tools");
+                }
+                
+                // Block copy/paste shortcuts
+                if ((e.ctrlKey || e.metaKey) && ["c", "x", "v", "a"].includes(e.key.toLowerCase())) {
+                    e.preventDefault();
+                    logViolation("Attempted to copy/paste");
+                }
+            });
+            
+            // Right click prevention
+            document.addEventListener("contextmenu", function(e) {
+                e.preventDefault();
+            });
+            
+            // Text selection prevention
+            document.addEventListener("selectstart", function(e) {
+                e.preventDefault();
+            });
+            
+            // Drag prevention
+            document.addEventListener("dragstart", function(e) {
+                e.preventDefault();
+            });
+            
+            // Image drag prevention (for dynamic content)
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) { // Element node
+                            if (node.tagName === "IMG") {
+                                node.addEventListener("dragstart", function(e) {
+                                    e.preventDefault();
+                                });
+                            }
+                            
+                            // Add to any existing images
+                            node.querySelectorAll("img").forEach(img => {
+                                img.addEventListener("dragstart", function(e) {
+                                    e.preventDefault();
+                                });
+                            });
+                        }
+                    });
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
+
+        // Initialize this with your other setup
+        document.addEventListener('DOMContentLoaded', () => {
+            enterFullScreen();
+            fetchQuestions();
+            setupSecurity(); // Add this line
+        });
+    // Quiz data and state
+    let questions = [];
+    let currentQuestion = 0;
+    let testId = "01";
+    let totalSeconds = parseInt(initialTotalSeconds) || 600;
+    let timerInterval;
+    let startTime = Date.now();
+    let violationCount = 0;
+    let violations = [];
+    const maxViolations = 3;
+    let isSubmitted = false;
+    let isMonitoringViolations = true;
+    const STORAGE_KEY = `exam_state_${testId}_${"{{ session.email }}"}`;
+    const SUBMISSION_KEY = `exam_submitted_${testId}_${"{{ session.email }}"}`;
+
+    // DOM elements
+    const questionText = document.getElementById('questionText');
+    const questionHeader = document.getElementById('questionHeader');
+    const optionsContainer = document.getElementById('optionsContainer');
+    const questionGrid = document.getElementById('questionGrid');
+    const unattemptedCount = document.getElementById('unattemptedCount');
+    const timerEl = document.getElementById('timer');
+    const questionPanel = document.getElementById('questionPanel');
+    const navigationPanel = document.getElementById('navigationPanel');
+
+    // Function to show submission confirmation
+    function showSubmissionConfirmation(submissionData = {}) {
+        const timeTaken = submissionData.timeTaken || 'N/A';
+        const answeredCount = submissionData.answeredCount || questions.filter(q => q.selectedAnswer !== null).length;
+        const totalQuestions = submissionData.totalQuestions || questions.length;
+
+        const resultHtml = `
+            <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+                <div class="card border-0 shadow-lg" style="width: 100%; max-width: 520px;">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <div class="bg-success bg-opacity-10 d-inline-flex p-3 rounded-circle mb-3">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="#28a745">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
+                                </svg>
+                            </div>
+                            <h2 class="fw-bold text-success mb-2">Exam Submitted Successfully</h2>
+                            <p class="text-muted">Your assessment has been recorded.</p>
+                        </div>
+
+                        <div class="border rounded-3 overflow-hidden mb-4">
+                            <table class="table table-borderless mb-0">
+                                <tbody>
+                                    <tr class="border-bottom">
+                                        <td class="text-muted py-3 ps-4">Submission Time</td>
+                                        <td class="fw-semibold py-3 pe-4">${new Date().toLocaleString('en-US', { 
+                                            weekday: 'short', 
+                                            year: 'numeric', 
+                                            month: 'short', 
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}</td>
+                                    </tr>
+                                    <tr class="border-bottom">
+                                        <td class="text-muted py-3 ps-4">Time Taken</td>
+                                        <td class="fw-semibold py-3 pe-4">${timeTaken}</td>
+                                    </tr>
+                                    <tr class="border-bottom">
+                                        <td class="text-muted py-3 ps-4">Total Questions</td>
+                                        <td class="fw-semibold py-3 pe-4">${totalQuestions}</td>
+                                    </tr>
+                                    <tr class="border-bottom">
+                                        <td class="text-muted py-3 ps-4">Answered</td>
+                                        <td class="fw-semibold py-3 pe-4">${answeredCount}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted py-3 ps-4">Not Answered</td>
+                                        <td class="fw-semibold py-3 pe-4">${totalQuestions - answeredCount}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <p class="small text-muted mb-2">Results will be announced shortly...</p>
+                            <p class="small text-muted">Await further communication from the examination committee.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <style>
+                .card {
+                    border-radius: 12px;
+                }
+                table td {
+                    white-space: nowrap;
+                }
+            </style>
+        `;
+
+        document.querySelector(".container").innerHTML = resultHtml;
+        lockExamInterface();
+    }
+
+    // Full-screen management
+    function enterFullScreen() {
+        const elem = document.documentElement;
+        const fullscreenPromise = elem.requestFullscreen ? elem.requestFullscreen() :
+            elem.mozRequestFullScreen ? elem.mozRequestFullScreen() :
+            elem.webkitRequestFullscreen ? elem.webkitRequestFullscreen() :
+            elem.msRequestFullscreen ? elem.msRequestFullscreen() : Promise.reject('Fullscreen API not supported');
+        
+        fullscreenPromise.catch(err => {
+            console.error('Fullscreen request failed:', err);
+            const fullscreenModal = new bootstrap.Modal(document.getElementById('fullscreenPromptModal'), { backdrop: 'static', keyboard: false });
+            fullscreenModal.show();
+        });
+    }
+
+    function handleFullScreenChange() {
+        if (!document.fullscreenElement && !isSubmitted && isMonitoringViolations) {
+            logViolation('Attempted to exit full-screen');
+            setTimeout(enterFullScreen, 100); // Re-enter full-screen immediately
+        }
+    }
+
+    function exitFullScreen() {
+        if (document.exitFullscreen) {
+            document.exitFullscreen().catch(err => console.error('Exit fullscreen failed:', err));
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    }
+
+    // Lock exam interface to prevent interaction
+    function lockExamInterface() {
+        document.getElementById('prevBtn').disabled = true;
+        document.getElementById('nextBtn').disabled = true;
+        document.getElementById('reviewBtn').disabled = true;
+        document.getElementById('submitBtn').disabled = true;
+
+        const questionButtons = document.querySelectorAll('.question-btn');
+        questionButtons.forEach(button => {
+            button.disabled = true;
+            button.style.cursor = 'not-allowed';
+        });
+
+        const options = document.querySelectorAll('.option');
+        options.forEach(option => {
+            option.style.pointerEvents = 'none';
+            option.style.opacity = '0.5';
+        });
+    }
+
+    // State management
+    function saveState() {
+        if (isSubmitted) return;
+        const state = {
+            currentQuestion,
+            questions: questions.map(q => ({
+                id: q.id,
+                selectedAnswer: q.selectedAnswer,
+                isMarkedForReview: q.isMarkedForReview,
+                isAttempted: q.isAttempted
+            })),
+            totalSeconds,
+            violationCount,
+            violations,
+            startTime
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function loadState() {
+        const savedState = localStorage.getItem(STORAGE_KEY);
+        if (savedState) {
+            const state = JSON.parse(savedState);
+            if (state.currentQuestion >= 0 && state.currentQuestion < questions.length) {
+                currentQuestion = state.currentQuestion;
+            }
+            if (state.totalSeconds >= 0) {
+                totalSeconds = state.totalSeconds;
+                startTime = Date.now() - (parseInt(initialTotalSeconds) - state.totalSeconds) * 1000;
+            }
+            if (state.violationCount >= 0) {
+                violationCount = state.violationCount;
+            }
+            if (state.violations) {
+                violations = state.violations;
+            }
+            if (state.questions) {
+                questions.forEach((q, index) => {
+                    const savedQ = state.questions.find(sq => sq.id === q.id);
+                    if (savedQ) {
+                        q.selectedAnswer = savedQ.selectedAnswer;
+                        q.isMarkedForReview = savedQ.isMarkedForReview;
+                        q.isAttempted = savedQ.isAttempted;
+                    }
+                });
+            }
+            return true;
+        }
+        return false;
+    }
+
+    function clearState() {
+        localStorage.removeItem(STORAGE_KEY);
+    }
+
+    function saveSubmissionState(submissionData) {
+        localStorage.setItem(SUBMISSION_KEY, JSON.stringify({
+            submitted: true,
+            timeTaken: submissionData.timeTaken,
+            answeredCount: submissionData.answeredCount,
+            totalQuestions: submissionData.totalQuestions
+        }));
+    }
+
+    function checkSubmissionState() {
+        const submissionState = localStorage.getItem(SUBMISSION_KEY);
+        if (submissionState) {
+            const data = JSON.parse(submissionState);
+            if (data.submitted) {
+                isSubmitted = true;
+                showSubmissionConfirmation(data);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function updateTimer() {
+        if (totalSeconds <= 0) {
+            clearInterval(timerInterval);
+            timerEl.textContent = "00:00";
+            isMonitoringViolations = false;
+            exitFullScreen();
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('submitConfirmationModal'));
+            if (modal) {
+                modal.hide();
+            }
+            
+            performAutoSubmission();
+            return;
+        }
+
+        const hours = Math.floor(totalSeconds / 3600);
+        const remainingSeconds = totalSeconds % 3600;
+        const minutes = Math.floor(remainingSeconds / 60);
+        const seconds = remainingSeconds % 60;
+
+        timerEl.textContent = hours > 0 
+            ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+            : `${minutes}:${String(seconds).padStart(2, '0')}`;
+        
+        totalSeconds--;
+        saveState();
+    }
+
+    async function performAutoSubmission() {
+        clearInterval(timerInterval);
+        isMonitoringViolations = false;
+        exitFullScreen();
+        
+        lockExamInterface();
+
+        const timeElapsed = Date.now() - startTime;
+        const minutes = Math.floor(timeElapsed / 60000);
+        const seconds = Math.floor((timeElapsed % 60000) / 1000);
+        const timeTaken = `${minutes}m ${seconds}s`;
+        
+        const answers = {};
+        questions.forEach(q => {
+            if (q.selectedAnswer !== null) {
+                answers[q.id] = Array.isArray(q.selectedAnswer) 
+                    ? q.selectedAnswer.map(index => String.fromCharCode(65 + index)).join(',')
+                    : String.fromCharCode(65 + q.selectedAnswer);
+            }
+        });
+        
+        try {
+            document.querySelector(".container").innerHTML = `
+                <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p>Time has ended or maximum violations reached. Submitting your exam automatically...</p>
+                    </div>
+                </div>
+            `;
+            
+            const response = await fetch('/submit_exam', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    test_id: testId,
+                    email: "{{ session.email }}",
+                    answers: answers,
+                    time_taken: timeTaken,
+                    auto_submitted: true,
+                    violations: violations
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                isSubmitted = true;
+                const submissionData = {
+                    timeTaken: timeTaken,
+                    answeredCount: questions.filter(q => q.selectedAnswer !== null).length,
+                    totalQuestions: questions.length
+                };
+                saveSubmissionState(submissionData);
+                clearState();
+                showSubmissionConfirmation(submissionData);
+            } else {
+                throw new Error(result.error || 'Auto-submission failed');
+            }
+        } catch (error) {
+            console.error("Auto-submission error:", error);
+            alert("Exam submitted successfully.");
+            isSubmitted = true;
+            const submissionData = {
+                timeTaken: timeTaken,
+                answeredCount: questions.filter(q => q.selectedAnswer !== null).length,
+                totalQuestions: questions.length
+            };
+            saveSubmissionState(submissionData);
+            clearState();
+            showSubmissionConfirmation(submissionData);
+        }
+    }
+
+    function startTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+        }
+        
+        totalSeconds = parseInt(totalSeconds);
+        updateTimer();
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function showSubmitConfirmation() {
+        document.getElementById('answeredCountModal').textContent = 
+            `${questions.filter(q => q.selectedAnswer !== null).length}/${questions.length}`;
+        document.getElementById('timeRemainingModal').textContent = 
+            document.getElementById('timer').textContent;
+        
+        const modal = new bootstrap.Modal(document.getElementById('submitConfirmationModal'));
+        modal.show();
+    }
+
+    async function performSubmission() {
+        clearInterval(timerInterval);
+        isMonitoringViolations = false;
+        exitFullScreen();
+        
+        lockExamInterface();
+
+        const timeElapsed = Date.now() - startTime;
+        const minutes = Math.floor(timeElapsed / 60000);
+        const seconds = Math.floor((timeElapsed % 60000) / 1000);
+        const timeTaken = `${minutes}m ${seconds}s`;
+        
+        const answers = {};
+        questions.forEach(q => {
+            if (q.selectedAnswer !== null) {
+                answers[q.id] = Array.isArray(q.selectedAnswer) 
+                    ? q.selectedAnswer.map(index => String.fromCharCode(65 + index)).join(',')
+                    : String.fromCharCode(65 + q.selectedAnswer);
+            }
+        });
+        
+        try {
+            document.querySelector(".container").innerHTML = `
+                <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p>Submitting your exam...</p>
+                    </div>
+                </div>
+            `;
+            
+            const response = await fetch('/submit_exam', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    test_id: testId,
+                    email: "{{ session.email }}",
+                    answers: answers,
+                    time_taken: timeTaken,
+                    violations: violations
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                isSubmitted = true;
+                const submissionData = {
+                    timeTaken: timeTaken,
+                    answeredCount: questions.filter(q => q.selectedAnswer !== null).length,
+                    totalQuestions: questions.length
+                };
+                saveSubmissionState(submissionData);
+                clearState();
+                showSubmissionConfirmation(submissionData);
+            } else {
+                throw new Error(result.error || 'Submission failed');
+            }
+        } catch (error) {
+            console.error("Submission error:", error);
+            alert("Exam submitted successfully.");
+            isSubmitted = true;
+            const submissionData = {
+                timeTaken: timeTaken,
+                answeredCount: questions.filter(q => q.selectedAnswer !== null).length,
+                totalQuestions: questions.length
+            };
+            saveSubmissionState(submissionData);
+            clearState();
+            showSubmissionConfirmation(submissionData);
+        }
+    }
+
+    function logViolation(violationType) {
+        if (!isMonitoringViolations) return;
+
+        violationCount++;
+        violations.push({
+            type: violationType,
+            timestamp: new Date().toISOString()
+        });
+        saveState();
+        
+        const violationMessage = violationCount < maxViolations 
+            ? `Warning: ${violationType} detected! Violation ${violationCount} of ${maxViolations}.`
+            : `Exam Terminated: Maximum violations (${maxViolations}) reached due to ${violationType}.`;
+        
+        const violationModal = new bootstrap.Modal(document.getElementById('violationModal'), {
+            backdrop: violationCount >= maxViolations ? 'static' : true,
+            keyboard: violationCount >= maxViolations ? false : true
+        });
+        document.getElementById('violationMessage').textContent = violationMessage;
+        document.getElementById('violationDetail').textContent = violationCount < maxViolations 
+            ? 'Please stay focused on the exam window to avoid violations.'
+            : 'Your exam has been terminated due to excessive violations and will be submitted automatically.';
+        
+        const modalFooter = document.querySelector('#violationModal .modal-footer');
+        if (violationCount >= maxViolations) {
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-primary" id="confirmViolationSubmitBtn">Submit Exam</button>
+            `;
+            document.getElementById('confirmViolationSubmitBtn').addEventListener('click', async () => {
+                violationModal.hide();
+                await performAutoSubmission();
+            });
+            setTimeout(async () => {
+                violationModal.hide();
+                await performAutoSubmission();
+            }, 3000);
+        } else {
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            `;
+        }
+        
+        violationModal.show();
+        
+        if (violationCount >= maxViolations) {
+            isMonitoringViolations = false;
+            exitFullScreen();
+            lockExamInterface();
+        }
+    }
+
+    function setupKeyBlocking() {
+        // Block all keyboard events (keydown, keypress, keyup) to cover Esc and Windows keys
+        ['keydown', 'keypress', 'keyup'].forEach(eventType => {
+            document.addEventListener(eventType, (event) => {
+                if (!isMonitoringViolations || isSubmitted) return;
+
+                // Specifically handle Esc and Windows (Meta) keys
+                if (event.key === 'Escape' || event.key === 'Esc' || event.key === 'Meta' || event.metaKey) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (event.key === 'Escape' || event.key === 'Esc') {
+                        // Log violation for Esc key as it may attempt to exit full-screen
+                        logViolation('Attempted to exit full-screen with Esc key');
+                        setTimeout(enterFullScreen, 100); // Re-enter full-screen
+                    }
+                    return false;
+                }
+
+                // Block all other keys
+                event.preventDefault();
+                event.stopPropagation();
+                return false;
+            }, { capture: true }); // Use capture phase to ensure early interception
+        });
+    }
+
+    function setupViolationMonitoring() {
+        window.addEventListener('blur', () => {
+            if (isMonitoringViolations) {
+                logViolation('Window focus change');
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden' && isMonitoringViolations) {
+                logViolation('Tab change');
+            }
+        });
+
+        document.addEventListener('fullscreenchange', handleFullScreenChange);
+    }
+
+    async function fetchQuestions() {
+        try {
+            questionText.textContent = "Loading questions...";
+            optionsContainer.innerHTML = "<div class='option'>Please wait while questions load...</div>";
+            
+            const response = await fetch(`/get_questions/${testId}`);
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data || data.length === 0) {
+                throw new Error('No questions found');
+            }
+            
+            questions = data.map(q => ({
+                id: q.QID,
+                question: q.Question,
+                options: [q.OptionA, q.OptionB, q.OptionC, q.OptionD].filter(opt => opt),
+                answer: q.Answer,
+                type: q.Type.toLowerCase(),
+                image: q.ImageURL || null,
+                selectedAnswer: null,
+                isMarkedForReview: false,
+                isAttempted: false
+            }));
+            
+            if (questions.length === 0) {
+                throw new Error('No valid questions found after processing');
+            }
+            
+            const stateLoaded = loadState();
+            if (!stateLoaded) {
+                startTime = Date.now();
+                totalSeconds = parseInt(initialTotalSeconds) || 600;
+            }
+            
+            renderQuestion();
+            renderQuestionGrid();
+            updateSummary();
+            startTimer();
+            setupViolationMonitoring();
+            
+        } catch (error) {
+            console.error("Error loading questions:", error);
+            questionText.textContent = "Error loading questions. Please try again later.";
+            optionsContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> ${error.message}
+                    <button class="btn btn-sm btn-primary mt-2" onclick="fetchQuestions()">Retry</button>
+                </div>
+            `;
+        }
+    }
+
+    function renderQuestion() {
+        if (questions.length === 0) return;
+        
+        const q = questions[currentQuestion];
+        questionHeader.textContent = `Q${currentQuestion + 1}`;
+        questionText.textContent = q.question;
+        
+        const imageContainer = document.getElementById('questionImageContainer');
+        imageContainer.innerHTML = '';
+        
+        if (q.image) {
+            questionPanel.classList.add('has-image');
+            navigationPanel.classList.add('tall');
+            
+            let imageUrl = q.image;
+            if (q.image.includes('drive.google.com')) {
+                const fileId = q.image.match(/[-\w]{25,}/);
+                if (fileId) {
+                    imageUrl = `https://drive.google.com/thumbnail?id=${fileId[0]}`;
+                }
+            }
+            
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.alt = 'Question Image';
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '300px';
+            img.style.borderRadius = '8px';
+            img.style.margin = '10px 0';
+            img.onerror = function() {
+                this.style.display = 'none';
+                const errorMsg = document.createElement('p');
+                errorMsg.textContent = 'Image not available';
+                errorMsg.style.color = '#999';
+                errorMsg.style.fontStyle = 'italic';
+                imageContainer.appendChild(errorMsg);
+                questionPanel.classList.remove('has-image');
+                navigationPanel.classList.remove('tall');
+            };
+            imageContainer.appendChild(img);
+        } else {
+            questionPanel.classList.remove('has-image');
+            navigationPanel.classList.remove('tall');
+        }
+        
+        optionsContainer.innerHTML = '';
+        q.options.forEach((option, index) => {
+            const optionDiv = document.createElement('div');
+            optionDiv.className = `option ${Array.isArray(q.selectedAnswer) ? 
+                (q.selectedAnswer.includes(index) ? 'selected' : '') : 
+                (q.selectedAnswer === index ? 'selected' : '')}`;
+            optionDiv.onclick = () => selectAnswer(index);
+            
+            const inputType = q.type === 'multi' ? 'checkbox' : 'radio';
+            optionDiv.innerHTML = `
+                <input type="${inputType}" name="answer" 
+                    ${Array.isArray(q.selectedAnswer) ? 
+                        (q.selectedAnswer.includes(index) ? 'checked' : '') : 
+                        (q.selectedAnswer === index ? 'checked' : '')}>
+                <span class="option-label">${String.fromCharCode(65 + index)}</span>
+                <span class="option-text">${option}</span>
+            `;
+            
+            optionsContainer.appendChild(optionDiv);
+        });
+
+        document.getElementById('prevBtn').disabled = currentQuestion === 0;
+        document.getElementById('nextBtn').disabled = currentQuestion === questions.length - 1;
+        document.getElementById('reviewBtn').textContent = 
+            q.isMarkedForReview ? 'Unmark for Review' : 'Mark for Review';
+        document.getElementById('reviewBtn').classList.toggle('marked', q.isMarkedForReview);
+    }
+
+    function selectAnswer(optionIndex) {
+        if (!isMonitoringViolations || isSubmitted) return;
+        
+        const currentQ = questions[currentQuestion];
+        
+        if (currentQ.type === 'multi') {
+            if (!Array.isArray(currentQ.selectedAnswer)) {
+                currentQ.selectedAnswer = [];
+            }
+            
+            const index = currentQ.selectedAnswer.indexOf(optionIndex);
+            if (index === -1) {
+                currentQ.selectedAnswer.push(optionIndex);
+            } else {
+                currentQ.selectedAnswer.splice(index, 1);
+            }
+        } else {
+            currentQ.selectedAnswer = optionIndex;
+        }
+        
+        currentQ.isAttempted = currentQ.type === 'multi' ? 
+            currentQ.selectedAnswer.length > 0 : 
+            currentQ.selectedAnswer !== null;
+        
+        renderQuestion();
+        renderQuestionGrid();
+        updateSummary();
+        saveState();
+    }
+
+    function toggleReview() {
+        if (!isMonitoringViolations || isSubmitted) return;
+        questions[currentQuestion].isMarkedForReview = !questions[currentQuestion].isMarkedForReview;
+        renderQuestion();
+        renderQuestionGrid();
+        updateSummary();
+        saveState();
+    }
+
+    function nextQuestion() {
+        if (!isMonitoringViolations || isSubmitted) return;
+        if (currentQuestion < questions.length - 1) {
+            currentQuestion++;
+            renderQuestion();
+            renderQuestionGrid();
+            saveState();
+        }
+    }
+
+    function previousQuestion() {
+        if (!isMonitoringViolations || isSubmitted) return;
+        if (currentQuestion > 0) {
+            currentQuestion--;
+            renderQuestion();
+            renderQuestionGrid();
+            saveState();
+        }
+    }
+
+    function navigateToQuestion(questionIndex) {
+        if (!isMonitoringViolations || isSubmitted) return;
+        currentQuestion = questionIndex;
+        renderQuestion();
+        renderQuestionGrid();
+        saveState();
+    }
+
+    function renderQuestionGrid() {
+        questionGrid.innerHTML = '';
+        
+        questions.forEach((question, index) => {
+            const button = document.createElement('button');
+            button.className = `question-btn ${getQuestionStatus(question, index)}`;
+            button.textContent = index + 1;
+            button.onclick = () => navigateToQuestion(index);
+            questionGrid.appendChild(button);
+        });
+    }
+
+    function getQuestionStatus(question, index) {
+        if (index === currentQuestion) return 'current';
+        if (question.isMarkedForReview) return 'review';
+        if (question.type === 'multi' ? 
+            (Array.isArray(question.selectedAnswer) && question.selectedAnswer.length > 0) : 
+            (question.selectedAnswer !== null)) return 'answered';
+        if (question.isAttempted) return 'attempted';
+        return 'unattempted';
+    }
+
+    function updateSummary() {
+        const unattempted = questions.filter(q => q.selectedAnswer === null && !q.isAttempted).length;
+        const totalQuestions = questions.length;
+        unattemptedCount.textContent = `${unattempted}/${totalQuestions}`;
+    }
+
+    // Event listeners
+    document.getElementById('prevBtn').addEventListener('click', previousQuestion);
+    document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+    document.getElementById('reviewBtn').addEventListener('click', toggleReview);
+    document.getElementById('submitBtn').addEventListener('click', showSubmitConfirmation);
+    document.getElementById('confirmSubmitBtn').addEventListener('click', performSubmission);
+    document.getElementById('enterFullscreenBtn').addEventListener('click', () => {
+        enterFullScreen();
+        const fullscreenModal = bootstrap.Modal.getInstance(document.getElementById('fullscreenPromptModal'));
+        if (fullscreenModal) {
+            fullscreenModal.hide();
+        }
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        if (checkSubmissionState()) {
+            return; // Stop further initialization if exam is already submitted
+        }
+        enterFullScreen();
+        fetchQuestions();
+        setupKeyBlocking();
+    });
+</script>
+</body>
+</html>
