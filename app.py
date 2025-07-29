@@ -120,7 +120,7 @@ def login():
                         user_idx = idx
                         break
             else:
-                flash('Email not found', 'danger')
+                flash('Email or password  incorrect.', 'danger')
                 return redirect(url_for('login'))
 
             if not user_row:
