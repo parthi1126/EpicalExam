@@ -1036,12 +1036,12 @@
         saveState();
         
         let violationMessage;
-        if (violationCount === 1 || violationCount === 2) {
+        if (violationCount === 1 || violationCount === 2 || violationCount === 3) {
             violationMessage = `Final Warning! Exam will be terminated on next violation.`;
         } else if (violationCount === maxViolations) {
-            violationMessage = `Exam Terminated: Maximum violations (${maxViolations}) reached due to ${violationType}.`;
+            violationMessage = `Exam Terminated: Maximum violations reached due to ${violationType}.`;
         } else {
-            violationMessage = `Exam Terminated: Maximum violations (${maxViolations}) reached due to ${violationType}.`;
+            violationMessage = `Exam Terminated: Maximum violations reached due to ${violationType}.`;
         }
         
         const violationModal = new bootstrap.Modal(document.getElementById('violationModal'), {
