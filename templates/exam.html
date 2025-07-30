@@ -603,6 +603,7 @@
     const timerEl = document.getElementById('timer');
     const questionPanel = document.getElementById('questionPanel');
     const navigationPanel = document.getElementById('navigationPanel');
+    
 
     // Function to show submission confirmation
     function showSubmissionConfirmation(submissionData = {}) {
@@ -736,12 +737,14 @@
     }
 
     // State management
+// State management
     function saveState() {
         if (isSubmitted) return;
         const state = {
             currentQuestion,
             questions: questions.map(q => ({
                 id: q.id,
+                originalIndex: q.originalIndex, // Save original index
                 selectedAnswer: q.selectedAnswer,
                 isMarkedForReview: q.isMarkedForReview,
                 isAttempted: q.isAttempted
@@ -772,8 +775,9 @@
                 violations = state.violations;
             }
             if (state.questions) {
-                questions.forEach((q, index) => {
-                    const savedQ = state.questions.find(sq => sq.id === q.id);
+                // Map saved state back to questions using question IDs
+                questions.forEach((q) => {
+                    const savedQ = state.questions.find(sq => sq.id === q.id && sq.originalIndex === q.originalIndex);
                     if (savedQ) {
                         q.selectedAnswer = savedQ.selectedAnswer;
                         q.isMarkedForReview = savedQ.isMarkedForReview;
@@ -785,9 +789,9 @@
         }
         return false;
     }
-
     function clearState() {
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(`${STORAGE_KEY}_indices`); // Clear shuffled indices
     }
 
     function saveSubmissionState(submissionData) {
@@ -943,9 +947,9 @@
 
     async function performSubmission() {
         const modal = bootstrap.Modal.getInstance(document.getElementById('submitConfirmationModal'));
-            if (modal) {
-                modal.hide(); // Hide the confirmation modal immediately
-            }
+        if (modal) {
+            modal.hide();
+        }
         clearInterval(timerInterval);
         isMonitoringViolations = false;
         exitFullScreen();
@@ -1021,7 +1025,6 @@
             showSubmissionConfirmation(submissionData);
         }
     }
-
     function logViolation(violationType) {
         if (!isMonitoringViolations) return;
 
@@ -1133,8 +1136,22 @@
                 throw new Error('No questions found');
             }
             
-            questions = data.map(q => ({
+            // Create a list of indices for shuffling
+            let questionIndices = JSON.parse(localStorage.getItem(`${STORAGE_KEY}_indices`)) || Array.from({ length: data.length }, (_, i) => i);
+            
+            // Shuffle indices if not already stored
+            if (!localStorage.getItem(`${STORAGE_KEY}_indices`)) {
+                for (let i = questionIndices.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [questionIndices[i], questionIndices[j]] = [questionIndices[j], questionIndices[i]];
+                }
+                localStorage.setItem(`${STORAGE_KEY}_indices`, JSON.stringify(questionIndices));
+            }
+            
+            // Map questions to their original indices and store original order
+            questions = data.map((q, index) => ({
                 id: q.QID,
+                originalIndex: index, // Store original index for submission
                 question: q.Question,
                 options: [q.OptionA, q.OptionB, q.OptionC, q.OptionD].filter(opt => opt),
                 answer: q.Answer,
@@ -1144,6 +1161,9 @@
                 isMarkedForReview: false,
                 isAttempted: false
             }));
+            
+            // Reorder questions based on shuffled indices
+            questions = questionIndices.map(i => questions.find(q => q.originalIndex === i));
             
             if (questions.length === 0) {
                 throw new Error('No valid questions found after processing');
@@ -1366,4 +1386,4 @@
     });
 </script>
 </body>
-</html> 
+</html>
