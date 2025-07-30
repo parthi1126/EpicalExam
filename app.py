@@ -75,7 +75,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('logged_in'):
-            flash("⚠️ You must be logged in to access this page.", "warning")
+            flash(" You must be logged in to access this page.", "warning")
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -113,7 +113,7 @@ def login():
                 sheet_email = user.get('EmployeeMailId', '').strip().lower()
                 if email == sheet_email:
                     if user.get('IsActive', '').lower() == 'true':
-                        flash("⚠️ You are already logged in for an exam. Please complete or logout from your active session.", "danger")
+                        flash("You are already logged in for an exam. Please complete or logout from your active session.", "danger")
                         return redirect(url_for('login'))
                     if password == user.get('Password', '').strip():
                         user_row = user
@@ -156,7 +156,7 @@ def login():
 @login_required
 def admin_dashboard():
     if session.get('role') != 'admin':
-        flash("⚠️ Unauthorized access. Admins only.", "danger")
+        flash(" Unauthorized access. Admins only.", "danger")
         return redirect(url_for('login'))
 
     try:
@@ -194,11 +194,11 @@ def admin_dashboard():
 
             try:
                 update_instructions()
-                flash("✅ Instructions updated successfully", "success")
+                flash(" Instructions updated successfully", "success")
                 instructions_data = new_instructions
             except Exception as e:
                 logger.error(f"Error updating instructions: {str(e)}")
-                flash(f"❌ Error updating instructions: {str(e)}", "danger")
+                flash(f" Error updating instructions: {str(e)}", "danger")
 
         # Handle Excel Download
         if request.args.get('download') == 'excel':
@@ -234,7 +234,7 @@ def admin_dashboard():
 
     except Exception as e:
         logger.error(f"Error loading admin dashboard: {str(e)}")
-        flash(f"❌ Error loading dashboard: {str(e)}", "danger")
+        flash(f" Error loading dashboard: {str(e)}", "danger")
         return render_template(
             'admin_dashboard.html',
             leaderboard=[],
@@ -260,7 +260,7 @@ def instructions():
 
     except Exception as e:
         logger.error(f"Error loading instructions: {str(e)}")
-        instructions = ["❌ Failed to load instructions: " + str(e)]
+        instructions = [" Failed to load instructions: " + str(e)]
         duration = "N/A"
         total_questions = "N/A"
 
@@ -492,7 +492,7 @@ def logout():
                 clear_is_active()
 
         session.clear()
-        flash('✅ Logged out', 'info')
+        flash(' Logged out', 'info')
         logger.info(f"User {email} logged out")
         return redirect(url_for('login'))
         

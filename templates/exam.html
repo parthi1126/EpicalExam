@@ -1035,9 +1035,14 @@
         });
         saveState();
         
-        const violationMessage = violationCount < maxViolations 
-            ? `Warning: ${violationType} detected! Violation ${violationCount} of ${maxViolations}.`
-            : `Exam Terminated: Maximum violations (${maxViolations}) reached due to ${violationType}.`;
+        let violationMessage;
+        if (violationCount === 1 || violationCount === 2) {
+            violationMessage = `Final Warning! Exam will be terminated on next violation.`;
+        } else if (violationCount === maxViolations) {
+            violationMessage = `Exam Terminated: Maximum violations (${maxViolations}) reached due to ${violationType}.`;
+        } else {
+            violationMessage = `Exam Terminated: Maximum violations (${maxViolations}) reached due to ${violationType}.`;
+        }
         
         const violationModal = new bootstrap.Modal(document.getElementById('violationModal'), {
             backdrop: violationCount >= maxViolations ? 'static' : true,
@@ -1075,7 +1080,6 @@
             lockExamInterface();
         }
     }
-
     function setupKeyBlocking() {
         // Block all keyboard events (keydown, keypress, keyup) to cover Esc and Windows keys
         ['keydown', 'keypress', 'keyup'].forEach(eventType => {
@@ -1109,11 +1113,12 @@
             }
         });
 
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden' && isMonitoringViolations) {
-                logViolation('Tab change');
-            }
-        });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden' && isMonitoringViolations) {
+            logViolation('Tab change');
+            // Do not disable monitoring or lock UI here
+        }
+    });
 
         document.addEventListener('fullscreenchange', handleFullScreenChange);
     }
