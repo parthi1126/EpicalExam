@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Epical Layouts</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --primary-light: #3e8cf4;
+            --primary-lighter: #e7f1ff;
+            --primary-lightest: #f6faff;
+            --accent-color: #1b1f3b;
+            --danger-color: #dc3545;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --text-color: #212529;
+            --text-light: #6c757d;
+            --border-radius: 12px;
+            --box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --transition: all 0.25s ease-in-out;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(160deg, #f9fafb, #e0f2fe);
+            color: var(--text-color);
+            line-height: 1.7;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            box-shadow: var(--box-shadow);
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .dashboard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-logo img {
+            height: 50px;
+            width: auto;
+        }
+
+        .header-logo h3 {
+            margin: 0;
+            font-weight: 700;
+            color: var(--accent-color);
+        }
+
+        .dashboard-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            gap: 20px;
+        }
+
+        /* Flash messages overlay */
+        .flash-messages {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 800px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            pointer-events: auto;
+            animation: slideIn 0.3s ease-out forwards;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Card styles */
+        .card {
+            border: none;
+            border-radius: var(--border-radius);
+            background-color: #fff;
+            box-shadow: var(--box-shadow);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+        }
+
+        .card-body {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 18px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        /* Table styles */
+        .table-responsive {
+            flex: 1;
+            overflow: auto;
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .table {
+            color: var(--text-color);
+            margin-bottom: 0;
+            font-size: 0.95rem;
+        }
+
+        .table thead th {
+            background: var(--accent-color);
+            color: #fff;
+            font-weight: 500;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            padding: 14px 16px;
+            border: none;
+        }
+
+        .table tbody td {
+            padding: 12px 16px;
+            vertical-align: middle;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            transition: var(--transition);
+        }
+
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table tbody tr:hover {
+            background-color: var(--primary-lightest);
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f8fafc;
+        }
+
+        /* Button styles */
+        .btn {
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: var(--transition);
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(13, 110, 253, 0.25);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            border-color: var(--danger-color);
+        }
+
+        .btn-danger:hover {
+            background-color: #bb2d3b;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(220, 53, 69, 0.25);
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(40, 167, 69, 0.25);
+        }
+
+        .btn-outline-primary {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--primary-lightest);
+        }
+
+        /* Tab navigation */
+        .nav-tabs {
+            border-bottom: none;
+            gap: 8px;
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 600;
+            color: var(--text-light);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-tabs .nav-link:hover {
+            color: var(--primary-color);
+            background-color: var(--primary-lightest);
+        }
+
+        .nav-tabs .nav-link.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .tab-content {
+            flex: 1;
+            display: none;
+            overflow: hidden;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Rank badges */
+        .rank-1 {
+            background-color: rgba(255, 193, 7, 0.15) !important;
+            font-weight: 600;
+        }
+
+        .rank-2 {
+            background-color: rgba(108, 117, 125, 0.1) !important;
+        }
+
+        .rank-3 {
+            background-color: rgba(220, 53, 69, 0.1) !important;
+        }
+
+        .badge {
+            font-weight: 500;
+            font-size: 0.9rem;
+            padding: 6px 12px;
+            border-radius: 30px;
+            line-height: 1;
+            min-width: 40px;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .badge-rank {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            background-color: var(--primary-lightest);
+            color: var(--primary-color);
+        }
+
+        /* Instructions form */
+        .instructions-form {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            gap: 15px;
+        }
+
+        .instructions-container {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .instruction-input {
+            margin-bottom: 12px;
+        }
+
+        .instruction-input .input-group-text {
+            background-color: var(--primary-lightest);
+            color: var(--primary-color);
+            font-weight: 600;
+            min-width: 42px;
+            justify-content: center;
+        }
+
+        .instruction-input .form-control {
+            border: 2px solid rgba(59, 130, 246, 0.2);
+            border-radius: 8px;
+            background-color: #f9fafb;
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .instruction-input .form-control:focus {
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+            background-color: #ffffff;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        /* Empty state */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+        }
+
+        .empty-state i {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Stats cards */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: var(--box-shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            line-height: 1;
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-card .stat-change {
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .stat-card .stat-change.positive {
+            color: var(--success-color);
+        }
+
+        .stat-card .stat-change.negative {
+            color: var(--danger-color);
+        }
+
+        /* Input labels */
+        .input-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-color);
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            .container {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .table tbody td {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+            
+            .btn {
+                padding: 8px 16px;
+                font-size: 0.85rem;
+            }
+            
+            .instruction-input .form-control {
+                padding: 10px 14px;
+            }
+
+            .stats-container {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+            }
+            
+            .form-actions button {
+                width: 100%;
+            }
+
+            .flash-messages {
+                width: 95%;
+                top: 10px;
+            }
+
+            .stats-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .header-logo img {
+                height: 40px;
+            }
+            
+            .header-logo h3 {
+                font-size: 1.2rem;
+            }
+            
+            .table thead th {
+                font-size: 0.8rem;
+                padding: 10px 12px;
+            }
+            
+            .table tbody td {
+                font-size: 0.85rem;
+                padding: 10px 12px;
+            }
+            
+            .nav-tabs .nav-link {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+            }
+
+            .alert {
+                padding: 12px 15px;
+                font-size: 0.85rem;
+            }
+
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Flash Messages Overlay -->
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'danger' else 'warning' }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }} me-1"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="container-wrapper">
+        <div class="container">
+            <!-- Header with logo and tabs -->
+            <div class="dashboard-header">
+                <div class="header-logo">
+                    <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Epical Layouts Logo">
+                    <h3>EPICAL LAYOUTS</h3>
+                </div>
+                
+                <ul class="nav nav-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showTab('leaderboard-tab')">
+                            <i class="fas fa-trophy me-1"></i> Leaderboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showTab('instructions-tab')">
+                            <i class="fas fa-edit me-1"></i> Instructions
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="dashboard-content">
+                <!-- Leaderboard Section -->
+                <div id="leaderboard-tab" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-trophy me-2"></i>Leaderboard</h2>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-success btn-sm" onclick="sendLeaderboardEmail()">
+                                    <i class="fas fa-envelope me-1"></i> Send Email
+                                </button>
+                                <a href="{{ url_for('admin_dashboard', download='excel') }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-file-excel me-1"></i> Export Excel
+                                </a>
+                                <button class="btn btn-outline-primary btn-sm" onclick="refreshLeaderboard()">
+                                    <i class="fas fa-sync-alt me-1"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            {% if leaderboard %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Rank</th>
+                                                <th>Name</th>
+                                                <th>Score</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for entry in leaderboard %}
+                                                <tr class="rank-{{ entry.rank if entry.rank <= 3 else '' }}">
+                                                    <td>
+                                                        {% if entry.rank == 1 %}
+                                                            <span class="badge bg-warning text-dark"><i class="fas fa-crown me-1"></i> {{ entry.rank }}</span>
+                                                        {% elif entry.rank == 2 %}
+                                                            <span class="badge bg-secondary"><i class="fas fa-medal me-1"></i> {{ entry.rank }}</span>
+                                                        {% elif entry.rank == 3 %}
+                                                            <span class="badge bg-danger"><i class="fas fa-medal me-1"></i> {{ entry.rank }}</span>
+                                                        {% else %}
+                                                            <span class="badge-rank">{{ entry.rank }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ entry.name }}</td>
+                                                    <td>
+                                                        <span class="badge bg-success">{{ entry.score }}</span>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="empty-state">
+                                    <i class="fas fa-trophy"></i>
+                                    <h4>No Leaderboard Data</h4>
+                                    <p>There are currently no participants in the leaderboard.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instructions Section -->
+                <div id="instructions-tab" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-edit me-2"></i>Instructions Management</h2>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" class="instructions-form">
+                                        <div class="d-flex gap-1 mb-1"> <!-- Changed gap-3 to gap-1 and mb-3 to mb-1 -->
+                                    <div class="instruction-input flex-fill">
+                                        <label for="total_questions" class="input-label">Total Questions</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-question-circle"></i></span>
+                                            <input type="number" class="form-control" id="total_questions" name="total_questions" value="{{ total_questions if total_questions != 'N/A' else '' }}" placeholder="Enter total questions" min="1" required>
+                                        </div>
+                                    </div>
+                                    <div class="instruction-input flex-fill">
+                                        <label for="total_time" class="input-label">Total Time</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                                            <input type="time" class="form-control" id="total_time" name="total_time" value="{{ duration if duration != 'N/A' else '00:10' }}" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="instructions-container"> <!-- Ensure this div starts immediately after -->
+                                    {% if instructions %}
+                                        {% for instruction in instructions %}
+                                            <div class="instruction-input">
+                                                <div class="input-group">
+                                                    <span class="input-group-text">{{ loop.index }}</span>
+                                                    <input type="text" class="form-control" name="instructions" value="{{ instruction }}" placeholder="Enter instruction text" required>
+                                                    <button class="btn btn-outline-danger" type="button" onclick="removeInstructionField(this)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="instruction-input">
+                                            <div class="input-group">
+                                                <span class="input-group-text">1</span>
+                                                <input type="text" class="form-control" name="instructions" placeholder="Enter instruction text" required>
+                                                <button class="btn btn-outline-danger" type="button" onclick="removeInstructionField(this)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-outline-primary" onclick="addNewInstructionField()">
+                                        <i class="fas fa-plus-circle me-1"></i> Add Instruction
+                                    </button>
+                                    <div class="d-flex gap-2">
+                                        
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-save me-1"></i> Save
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer with logout -->
+            <div class="mt-auto pt-3 border-top text-center">
+                <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">
+                    <i class="fas fa-sign-out-alt me-1"></i> Logout
+                </a>
+                <p class="text-muted small mt-2"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Tab navigation
+        function showTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+            
+            // Update tab navigation state
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Find the nav-link corresponding to the tabId and add active class
+            const navLink = document.querySelector(`.nav-link[onclick="showTab('${tabId}')"]`);
+            if (navLink) {
+                navLink.classList.add('active');
+            }
+            
+            // Save the active tab to localStorage
+            localStorage.setItem('activeTab', tabId);
+        }
+
+        // Instructions form management
+        function addNewInstructionField() {
+            const container = document.querySelector('.instructions-container');
+            const instructionCount = container.querySelectorAll('.instruction-input').length + 1;
+            
+            const newField = document.createElement('div');
+            newField.className = 'instruction-input';
+            newField.innerHTML = `
+                <div class="input-group">
+                    <span class="input-group-text">${instructionCount}</span>
+                    <input type="text" class="form-control" name="instructions" placeholder="Enter instruction text" required>
+                    <button class="btn btn-outline-danger" type="button" onclick="removeInstructionField(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(newField);
+            // Scroll to the new field
+            newField.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        
+        function removeInstructionField(button) {
+            const container = document.querySelector('.instructions-container');
+            const fields = container.querySelectorAll('.instruction-input');
+            
+            // Don't remove the last field
+            if (fields.length <= 1) {
+                // Instead of removing, clear the value
+                const input = button.closest('.input-group').querySelector('input');
+                input.value = '';
+                input.focus();
+                return;
+            }
+            
+            // Remove the field
+            button.closest('.instruction-input').remove();
+            
+            // Renumber the remaining fields
+            container.querySelectorAll('.instruction-input').forEach((field, index) => {
+                field.querySelector('.input-group-text').textContent = index + 1;
+            });
+        }
+
+        // Refresh leaderboard
+        function refreshLeaderboard() {
+            // Show loading state
+            const refreshBtn = event.currentTarget;
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Refreshing...';
+            refreshBtn.disabled = true;
+            
+            // Simulate refresh (in a real app, this would be an AJAX call)
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
+
+        // Send leaderboard email
+        function sendLeaderboardEmail() {
+            // Show loading state
+            const sendBtn = event.currentTarget;
+            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Sending...';
+            sendBtn.disabled = true;
+            
+            // Simulate email sending (in a real app, this would be an AJAX call)
+            setTimeout(() => {
+                sendBtn.innerHTML = '<i class="fas fa-envelope me-1"></i> Send Email';
+                sendBtn.disabled = false;
+                alert('Email sent successfully!'); // Placeholder for actual email functionality
+            }, 1000);
+        }
+
+        // Auto-dismiss alerts after 5 seconds and initialize tabs
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-dismiss alerts
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+            
+            // Restore active tab from localStorage
+            const activeTab = localStorage.getItem('activeTab') || 'leaderboard-tab';
+            showTab(activeTab);
+            
+            // Initialize charts
+            initStatsCharts();
+        });
+
+        // Initialize stats charts
+        function initStatsCharts() {
+            // This would be replaced with actual chart initialization
+            // Example using Chart.js for visualization
+            const statCards = document.querySelectorAll('.stat-card');
+            statCards.forEach(card => {
+                // In a real implementation, you would create mini charts here
+            });
+        }
+    </script>
+</body>
+</html>
